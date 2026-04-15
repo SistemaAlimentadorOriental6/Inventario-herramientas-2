@@ -93,8 +93,14 @@ func (h *ManejadorPrestamoCRUD) ObtenerPrestamo(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Extraer ID de la URL
-	idStr := strings.TrimPrefix(r.URL.Path, "/prestamos/")
+	segmentos := obtenerSegmentosRuta(r.URL.Path)
+	if len(segmentos) < 2 || segmentos[len(segmentos)-2] != "prestamos" {
+		responderError(w, http.StatusBadRequest, "URL inválida")
+		return
+	}
+
+	// Extraer ID de la URL (soporta /prestamos/:id y /api/prestamos/:id)
+	idStr := segmentos[len(segmentos)-1]
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		responderError(w, http.StatusBadRequest, "ID inválido")
@@ -122,13 +128,13 @@ func (h *ManejadorPrestamoCRUD) ListarPrestamosPorOperario(w http.ResponseWriter
 		return
 	}
 
-	// Extraer cédula de la URL: /prestamos/operario/:cedula
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 4 {
+	// Extraer cédula de la URL: /prestamos/operario/:cedula (con o sin prefijo /api)
+	segmentos := obtenerSegmentosRuta(r.URL.Path)
+	if len(segmentos) < 3 || segmentos[len(segmentos)-2] != "operario" {
 		responderError(w, http.StatusBadRequest, "URL inválida")
 		return
 	}
-	cedula := pathParts[3]
+	cedula := segmentos[len(segmentos)-1]
 
 	estado := r.URL.Query().Get("estado")
 
@@ -149,13 +155,13 @@ func (h *ManejadorPrestamoCRUD) DevolverPrestamo(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Extraer ID de la URL: /prestamos/:id/devolver
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 4 {
+	// Extraer ID de la URL: /prestamos/:id/devolver (con o sin prefijo /api)
+	segmentos := obtenerSegmentosRuta(r.URL.Path)
+	if len(segmentos) < 3 || segmentos[len(segmentos)-1] != "devolver" {
 		responderError(w, http.StatusBadRequest, "URL inválida")
 		return
 	}
-	idStr := pathParts[2]
+	idStr := segmentos[len(segmentos)-2]
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		responderError(w, http.StatusBadRequest, "ID inválido")
@@ -185,4 +191,13 @@ func (h *ManejadorPrestamoCRUD) DevolverPrestamo(w http.ResponseWriter, r *http.
 	json.NewEncoder(w).Encode(map[string]string{
 		"mensaje": "devolución registrada exitosamente",
 	})
+}
+
+func obtenerSegmentosRuta(path string) []string {
+	path = strings.Trim(path, "/")
+	if path == "" {
+		return []string{}
+	}
+
+	return strings.Split(path, "/")
 }
