@@ -81,7 +81,6 @@ jobs:
           cp -r . /var/www/mantenimiento/inventario-herramientas/
       
       - name: Build del Backend Go
-        working-directory: /var/www/mantenimiento/inventario-herramientas/back-end/auth-service
         run: |
           cd /var/www/mantenimiento/inventario-herramientas/back-end/auth-service
           go mod download
