@@ -21,10 +21,9 @@ jobs:
           go-version: '1.22'
       
       - name: Build Backend Go
-        working-directory: ./back-end/auth-service
         run: |
-          go mod download
-          go build -o server ./cmd/main.go
+          go -C ./back-end/auth-service mod download
+          go -C ./back-end/auth-service build -o server ./cmd/main.go
   
   # Build Frontend
   frontend:
@@ -82,9 +81,8 @@ jobs:
       
       - name: Build del Backend Go
         run: |
-          cd /var/www/mantenimiento/inventario-herramientas/back-end/auth-service
-          go mod download
-          go build -o server ./cmd/main.go
+          go -C /var/www/mantenimiento/inventario-herramientas/back-end/auth-service mod download
+          go -C /var/www/mantenimiento/inventario-herramientas/back-end/auth-service build -o server ./cmd/main.go
       
       - name: Instalar dependencias y Build del Frontend
         working-directory: /var/www/mantenimiento/inventario-herramientas
