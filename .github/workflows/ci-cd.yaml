@@ -1,0 +1,110 @@
+name: CI/CD Inventario Herramientas
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # Build Backend
+  backend:
+    name: Backend Build
+    runs-on: [self-hosted, Linux, X64]
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      
+      - name: Build Backend Go
+        working-directory: ./back-end/auth-service
+        run: |
+          go mod download
+          go build -o server ./cmd/main.go
+  
+  # Build Frontend
+  frontend:
+    name: Frontend Build
+    runs-on: [self-hosted, Linux, X64]
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      
+      - name: Build Frontend
+        run: |
+          pnpm install
+          pnpm run build-only
+  
+  # Deploy
+  deploy:
+    name: Deploy
+    runs-on: [self-hosted, Linux, X64]
+    needs: [backend, frontend]
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Deploy a directorio de producción
+        run: |
+          mkdir -p /var/www/mantenimiento/inventario-herramientas
+          cp -r . /var/www/mantenimiento/inventario-herramientas/
+      
+      - name: Build del Backend Go
+        working-directory: /var/www/mantenimiento/inventario-herramientas/back-end/auth-service
+        run: |
+          go mod download
+          go build -o server ./cmd/main.go
+      
+      - name: Instalar dependencias y Build del Frontend
+        working-directory: /var/www/mantenimiento/inventario-herramientas
+        run: |
+          pnpm install
+          pnpm run build-only
+      
+      - name: Reiniciar Backend con PM2
+        working-directory: /var/www/mantenimiento/inventario-herramientas/back-end/auth-service
+        run: |
+          pm2 delete inventario_herramientas_backend || true
+          PORT=3028 pm2 start ./server --name inventario_herramientas_backend
+          pm2 save
+      
+      - name: Reiniciar Frontend con PM2
+        working-directory: /var/www/mantenimiento/inventario-herramientas
+        run: |
+          pm2 delete inventario_herramientas_frontend || true
+          pm2 start "pnpm dlx serve -s dist -l 3027" --name inventario_herramientas_frontend
+          pm2 save
+      
+      - name: Deploy completado
+        run: echo "Deploy exitoso - Frontend:3027, Backend:3028"
