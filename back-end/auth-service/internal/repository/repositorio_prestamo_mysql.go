@@ -90,7 +90,7 @@ func (r *repositorioPrestamoMySQL) ObtenerPrestamoPorID(ctx context.Context, id 
 // ListarPrestamos lista préstamos con filtros opcionales
 func (r *repositorioPrestamoMySQL) ListarPrestamos(ctx context.Context, estado, cedula, referencia string) ([]domain.Prestamo, error) {
 	query := `
-		SELECT id_prestamo, referencia, descripcion, ext1, um,
+		SELECT id_prestamo, TRIM(referencia), descripcion, ext1, um,
 			cedula_operario, nombre_operario, cantidad_prestada,
 			estado, fecha_prestamo, fecha_devolucion,
 			id_usuario_prestamista, nombre_usuario_prestamista,
@@ -125,7 +125,7 @@ func (r *repositorioPrestamoMySQL) ListarPrestamos(ctx context.Context, estado, 
 // ListarPrestamosPorOperario lista préstamos de un operario específico
 func (r *repositorioPrestamoMySQL) ListarPrestamosPorOperario(ctx context.Context, cedula string, estado string) ([]domain.Prestamo, error) {
 	query := `
-		SELECT id_prestamo, referencia, descripcion, ext1, um,
+		SELECT id_prestamo, TRIM(referencia), descripcion, ext1, um,
 			cedula_operario, nombre_operario, cantidad_prestada,
 			estado, fecha_prestamo, fecha_devolucion,
 			id_usuario_prestamista, nombre_usuario_prestamista,

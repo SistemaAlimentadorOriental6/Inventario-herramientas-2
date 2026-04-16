@@ -89,7 +89,8 @@ async function cargarPrestamosActivos() {
 
     // Asociar préstamos a las herramientas
     prestamos.forEach((prestamo: any) => {
-      const herramienta = herramientas.value.find(h => h.codigo === prestamo.referencia)
+      const refPrestamo = (prestamo.referencia || '').trim()
+      const herramienta = herramientas.value.find(h => (h.codigo || '').trim() === refPrestamo)
       if (herramienta) {
         herramienta.prestadosA.push({
           id_prestamo: prestamo.id_prestamo,
@@ -174,6 +175,44 @@ const procesandoID = ref<number | null>(null) // Para manejar el loader por card
 
 // Estados para los dropdowns personalizados
 const menuAbierto = ref<string | null>(null) // 'marca', 'categoria', 'orden'
+
+// Listado de los operarios con préstamos más antiguos (Top Demorados) agrupado por persona
+const topDemorados = computed(() => {
+  const porOperario: Record<string, any> = {}
+  
+  herramientas.value.forEach(h => {
+    (h.prestadosA || []).forEach((p: any) => {
+      if (p.fecha_prestamo && !p.fecha_prestamo.startsWith('0001')) {
+        const ms = new Date().getTime() - new Date(p.fecha_prestamo).getTime()
+        const cedula = p.id
+        
+        if (!porOperario[cedula]) {
+          porOperario[cedula] = {
+            id: cedula,
+            nombre: p.nombre,
+            items: [],
+            maxMs: 0
+          }
+        }
+        
+        porOperario[cedula].items.push({
+          nombre: h.nombre,
+          codigo: h.codigo,
+          duracionMs: ms,
+          tiempoFormateado: calcularTiempoTranscurrido(p.fecha_prestamo)
+        })
+        
+        if (ms > porOperario[cedula].maxMs) {
+          porOperario[cedula].maxMs = ms
+        }
+      }
+    })
+  })
+  
+  return Object.values(porOperario)
+    .sort((a, b) => b.maxMs - a.maxMs)
+    .slice(0, 4)
+})
 
 function toggleMenu(nombre: string) {
   if (menuAbierto.value === nombre) menuAbierto.value = null
@@ -741,6 +780,83 @@ function calcularTiempoTranscurrido(fechaStr: string) {
           <svg class="group-hover:rotate-90 transition-transform duration-300" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>
         </button>
       </div>
+
+      <!-- Auditoría de Tiempos (Agrupado por Operario) -->
+      <Transition name="fade-slide">
+        <div v-if="topDemorados.length > 0 && filtroEstado === 'Prestados'" class="w-full max-w-6xl mb-12">
+          <div class="flex items-center gap-3 mb-6 px-6">
+            <div class="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-xl shadow-orange-500/30">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-2xl font-black text-slate-800 leading-tight">Control de Tiempos</h2>
+              <p class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-[0.15em]">Tecnicos con préstamos activos prolongados</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 px-2">
+            <div 
+              v-for="persona in topDemorados" :key="persona.id"
+              class="group relative bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-xl shadow-slate-200/40 transition-all duration-500 hover:shadow-orange-900/5 hover:-translate-y-1"
+            >
+              <div class="flex items-start gap-6">
+                <!-- Perfil del Operario -->
+                <div class="relative shrink-0">
+                  <div class="w-20 h-20 rounded-[1.8rem] overflow-hidden border-4 border-slate-50 shadow-inner group-hover:border-orange-100 transition-colors">
+                    <img 
+                      :src="construirUrlFoto(persona.id)" 
+                      @error="(e) => manejarErrorFoto(e, persona)"
+                      class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                  </div>
+                  <div class="absolute -right-2 -bottom-1 w-8 h-8 rounded-xl bg-orange-500 text-white flex items-center justify-center shadow-lg border-2 border-white ring-4 ring-orange-50/50">
+                    <span class="text-[0.75rem] font-black">{{ persona.items.length }}</span>
+                  </div>
+                </div>
+
+                <!-- Info y Herramientas -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 class="font-black text-slate-801 text-lg leading-tight uppercase tracking-tight">{{ persona.nombre }}</h3>
+                      <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Cédula: {{ persona.id }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Lista de herramientas del operario -->
+                  <div class="space-y-3">
+                    <div 
+                      v-for="(item, idx) in persona.items" :key="idx"
+                      class="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100 transition-all group-hover:bg-orange-50/30 group-hover:border-orange-100"
+                    >
+                      <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 9.36l-7.1 7.1a1 1 0 0 1-1.4 0l-2.83-2.83a1 1 0 0 1 0-1.4l7.1-7.1a6 6 0 0 1 9.36-7.94l-3.76 3.76z"></path></svg>
+                        </div>
+                        <div class="truncate">
+                          <p class="text-[0.75rem] font-black text-slate-700 leading-none mb-1 truncate">{{ item.nombre }}</p>
+                          <p class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-tight">{{ item.codigo }}</p>
+                        </div>
+                      </div>
+                      
+                      <div class="flex items-center gap-2 pl-4 shrink-0">
+                         <div class="px-2.5 py-1 bg-white rounded-lg border border-slate-200 shadow-sm flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                            <span class="text-[0.6rem] font-black text-orange-700 whitespace-nowrap">{{ item.tiempoFormateado }}</span>
+                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
 
       <!-- Grid de Skeletons Nativos (Solo mientras carga) -->
       <div v-if="cargando" class="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

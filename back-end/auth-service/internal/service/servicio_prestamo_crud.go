@@ -6,6 +6,7 @@ import (
 	"auth-service/internal/utils"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -34,6 +35,9 @@ func NuevoServicioPrestamoCRUD(repoPrestamo repository.RepositorioPrestamo, repo
 
 // CrearPrestamo crea un nuevo préstamo validando stock disponible
 func (s *servicioPrestamoCRUDImpl) CrearPrestamo(ctx context.Context, req domain.CrearPrestamoRequest, idUsuario int32, nombreUsuario string) (*domain.RespuestaPrestamo, error) {
+	// Normalizar referencia (quitar espacios sobrantes)
+	req.Referencia = strings.TrimSpace(req.Referencia)
+
 	// Validar stock disponible
 	existencia, err := s.repoUNOEE.ObtenerExistenciaPorReferencia(ctx, req.Referencia)
 	if err != nil {
