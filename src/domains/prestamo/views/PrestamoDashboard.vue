@@ -325,10 +325,31 @@ function resaltarTexto(texto: string, consulta: string) {
   return resultado
 }
 
-function iniciarDevolucion(herramienta: any) {
+async function iniciarDevolucion(herramienta: any) {
   if (herramienta.prestadosA.length === 0) return
   herramientaSeleccionada.value = herramienta
   modalDevolucionAbierto.value = true
+  
+  // Recargar datos frescos al abrir para evitar fechas antiguas
+  await recargarDatosHerramientas()
+}
+
+async function recargarDatosHerramientas() {
+  const toolIdBefore = herramientaSeleccionada.value?.id
+  try {
+    // Reutilizamos la función de carga principal que ya tiene los endpoints correctos
+    await cargarItemsPrestamo()
+    
+    // Si había una herramienta abierta, recuperamos su nueva versión del array actualizado
+    if (toolIdBefore) {
+      const actualizada = herramientas.value.find((h: any) => h.id === toolIdBefore)
+      if (actualizada) {
+        herramientaSeleccionada.value = actualizada
+      }
+    }
+  } catch (error) {
+    console.error('Error al sincronizar:', error)
+  }
 }
 
 async function confirmarPrestamo() {
@@ -484,8 +505,11 @@ function prepararDevolucion(responsable: any) {
 }
 
 function calcularTiempoTranscurrido(fechaStr: string) {
-  if (!fechaStr) return ''
+  if (!fechaStr || fechaStr.startsWith('0001')) return ''
+  
   const fechaPrestamo = new Date(fechaStr)
+  if (isNaN(fechaPrestamo.getTime()) || fechaPrestamo.getFullYear() < 2000) return ''
+  
   const ahora = new Date()
   const diffMs = ahora.getTime() - fechaPrestamo.getTime()
   
@@ -1094,9 +1118,19 @@ function calcularTiempoTranscurrido(fechaStr: string) {
                     <p class="text-xs font-bold text-slate-400 mt-0.5">{{ herramientaSeleccionada?.nombre }}</p>
                   </div>
                 </div>
-                <button @click="modalDevolucionAbierto = false" class="p-2 rounded-full hover:bg-slate-100 text-slate-400 transition-colors">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
+                
+                <div class="flex items-center gap-2">
+                  <button 
+                    @click="recargarDatosHerramientas"
+                    class="p-2 rounded-full hover:bg-slate-100 text-slate-400 transition-all active:scale-90 group"
+                    title="Sincronizar datos"
+                  >
+                    <svg class="group-hover:rotate-180 transition-transform duration-500" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                  </button>
+                  <button @click="modalDevolucionAbierto = false" class="p-2 rounded-full hover:bg-slate-100 text-slate-400 transition-colors">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+                </div>
               </div>
 
               <!-- Lista de personas o Formulario -->
@@ -1139,13 +1173,16 @@ function calcularTiempoTranscurrido(fechaStr: string) {
                         <div class="flex-1 min-w-0">
                           <p class="text-sm font-bold text-slate-800">{{ responsable.nombre }}</p>
                           <p class="text-xs text-slate-500 mt-0.5">CC: {{ responsable.id }}</p>
-                          <div v-if="responsable.fecha_prestamo" class="flex flex-col mt-0.5">
+                          <div v-if="responsable.fecha_prestamo && !responsable.fecha_prestamo.startsWith('0001')" class="flex flex-col mt-0.5">
                             <p class="text-[0.7rem] text-green-600 font-bold uppercase tracking-wide">
                               Desde {{ new Date(responsable.fecha_prestamo).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) }} - {{ new Date(responsable.fecha_prestamo).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) }}
                             </p>
                             <p class="text-[0.7rem] text-slate-400 font-extrabold italic">
                               {{ calcularTiempoTranscurrido(responsable.fecha_prestamo) }}
                             </p>
+                          </div>
+                          <div v-else class="mt-1">
+                            <span class="text-[0.6rem] font-bold text-slate-300 animate-pulse uppercase">Cargando fecha...</span>
                           </div>
                         </div>
 
@@ -1171,13 +1208,18 @@ function calcularTiempoTranscurrido(fechaStr: string) {
                     <div class="flex-1 min-w-0">
                       <p class="text-[0.95rem] font-black text-slate-800 truncate">Devolución de {{ responsableADevolver.nombre }}</p>
                       <div class="flex flex-col gap-0.5 mt-1">
-                        <div class="flex items-center gap-1.5 text-[0.68rem] font-bold text-green-600 uppercase tracking-wide">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                          <span>Préstamo: {{ new Date(responsableADevolver.fecha_prestamo).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) }} - {{ new Date(responsableADevolver.fecha_prestamo).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) }}</span>
+                        <div v-if="responsableADevolver.fecha_prestamo && !responsableADevolver.fecha_prestamo.startsWith('0001')" class="flex flex-col gap-0.5">
+                          <div class="flex items-center gap-1.5 text-[0.68rem] font-bold text-green-600 uppercase tracking-wide">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            <span>Préstamo: {{ new Date(responsableADevolver.fecha_prestamo).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) }} - {{ new Date(responsableADevolver.fecha_prestamo).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) }}</span>
+                          </div>
+                          <div class="flex items-center gap-1.5 text-[0.68rem] font-black text-slate-400 italic">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            <span>Tiempo en uso: {{ calcularTiempoTranscurrido(responsableADevolver.fecha_prestamo) }}</span>
+                          </div>
                         </div>
-                        <div class="flex items-center gap-1.5 text-[0.68rem] font-black text-slate-400 italic">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                          <span>Tiempo en uso: {{ calcularTiempoTranscurrido(responsableADevolver.fecha_prestamo) }}</span>
+                        <div v-else class="py-1">
+                          <span class="text-[0.65rem] font-black text-slate-300 animate-pulse uppercase tracking-widest">Sincronizando tiempo de préstamo...</span>
                         </div>
                       </div>
                     </div>
