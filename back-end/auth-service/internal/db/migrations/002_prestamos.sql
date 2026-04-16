@@ -38,16 +38,3 @@ CREATE TABLE IF NOT EXISTS `prestamos` (
   KEY `idx_fecha_prestamo` (`fecha_prestamo`),
   KEY `idx_activos` (`referencia`, `estado`) COMMENT 'Para consultar stock disponible'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Tabla para devoluciones parciales
-CREATE TABLE IF NOT EXISTS `prestamo_devoluciones` (
-  `id_devolucion` bigint NOT NULL AUTO_INCREMENT,
-  `id_prestamo` bigint NOT NULL,
-  `cantidad_devuelta` decimal(12,2) NOT NULL,
-  `fecha_devolucion` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `observaciones` text,
-  `id_usuario_registro` int DEFAULT NULL,
-  PRIMARY KEY (`id_devolucion`),
-  KEY `idx_prestamo` (`id_prestamo`),
-  CONSTRAINT `fk_devolucion_prestamo` FOREIGN KEY (`id_prestamo`) REFERENCES `prestamos` (`id_prestamo`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

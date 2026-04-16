@@ -8,12 +8,10 @@ import (
 	"strings"
 )
 
-// ClaveContextoUsuario es la clave para guardar datos en el contexto HTTP
 type ClaveContexto string
 
 const ClaveUsuarioContexto ClaveContexto = "usuario_jwt"
 
-// AutenticarJWT valida el Bearer token en el header Authorization
 func AutenticarJWT(svcAuth service.ServicioAuth) func(http.Handler) http.Handler {
 	return func(siguiente http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +28,6 @@ func AutenticarJWT(svcAuth service.ServicioAuth) func(http.Handler) http.Handler
 				return
 			}
 
-			// Inyectamos los claims en el contexto para los handlers
 			ctx := context.WithValue(r.Context(), ClaveUsuarioContexto, claims)
 			siguiente.ServeHTTP(w, r.WithContext(ctx))
 		})

@@ -20,8 +20,8 @@ type RepositorioPrestamo interface {
 	// ListarPrestamosPorOperario lista préstamos de un operario específico
 	ListarPrestamosPorOperario(ctx context.Context, cedula string, estado string) ([]domain.Prestamo, error)
 
-	// ActualizarEstadoPrestamo actualiza el estado y opcionalmente la fecha de devolución
-	ActualizarEstadoPrestamo(ctx context.Context, id int64, estado string, fechaDevolucion *time.Time) error
+	// ActualizarEstadoPrestamo actualiza el estado y opcionalmente la fecha de devolución y condiciones
+	ActualizarEstadoPrestamo(ctx context.Context, id int64, estado string, fechaDevolucion *time.Time, condicion string, observacion string) error
 
 	// SumarCantidadPrestadaPorReferencia suma las cantidades prestadas activas de una referencia
 	SumarCantidadPrestadaPorReferencia(ctx context.Context, referencia string) (float64, error)

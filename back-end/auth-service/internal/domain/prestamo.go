@@ -19,6 +19,8 @@ type Prestamo struct {
 	FechaDevolucion       *time.Time `json:"fecha_devolucion,omitempty"`
 	IDUsuarioPrestamista  int32     `json:"id_usuario_prestamista"`
 	NombreUsuarioPrestamista string `json:"nombre_usuario_prestamista"`
+	CondicionDevolucion   string    `json:"condicion_devolucion,omitempty"`
+	ObservacionesDevolucion string  `json:"observaciones_devolucion,omitempty"`
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"updated_at"`
 }
@@ -46,8 +48,9 @@ type CrearPrestamoRequest struct {
 
 // DevolverPrestamoRequest datos para registrar devolución
 type DevolverPrestamoRequest struct {
-	CantidadDevuelta float64 `json:"cantidad_devuelta,omitempty"`
-	Observaciones    string  `json:"observaciones,omitempty"`
+	CantidadDevuelta   float64 `json:"cantidad_devuelta,omitempty"`
+	CondicionDevolucion string `json:"estado,omitempty"`
+	Observaciones      string  `json:"observaciones,omitempty"`
 }
 
 // RespuestaPrestamo envuelve un préstamo creado

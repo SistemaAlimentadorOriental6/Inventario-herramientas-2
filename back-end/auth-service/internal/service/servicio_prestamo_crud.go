@@ -149,12 +149,12 @@ func (s *servicioPrestamoCRUDImpl) DevolverPrestamo(ctx context.Context, id int6
 			fechaDevolucion = &ahora
 		}
 
-		return s.repoPrestamo.ActualizarEstadoPrestamo(ctx, id, nuevoEstado, fechaDevolucion)
+		return s.repoPrestamo.ActualizarEstadoPrestamo(ctx, id, nuevoEstado, fechaDevolucion, req.CondicionDevolucion, req.Observaciones)
 	}
 
 	// Devolución completa
 	ahora := utils.AhoraBogota()
-	return s.repoPrestamo.ActualizarEstadoPrestamo(ctx, id, "devuelto", &ahora)
+	return s.repoPrestamo.ActualizarEstadoPrestamo(ctx, id, "devuelto", &ahora, req.CondicionDevolucion, req.Observaciones)
 }
 
 // CalcularStockDisponible calcula el stock disponible de una referencia

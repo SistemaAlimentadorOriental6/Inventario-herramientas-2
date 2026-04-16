@@ -51,16 +51,20 @@ func (r *repositorioPrestamoMySQL) ObtenerPrestamoPorID(ctx context.Context, id 
 			cedula_operario, nombre_operario, cantidad_prestada,
 			estado, fecha_prestamo, fecha_devolucion,
 			id_usuario_prestamista, nombre_usuario_prestamista,
+			condicion_devolucion, observaciones_devolucion,
 			created_at, updated_at
 		FROM prestamos WHERE id_prestamo = ?`
 
 	var p domain.Prestamo
 	var fechaDevolucion sql.NullTime
+	var condicion sql.NullString
+	var observacion sql.NullString
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&p.IDPrestamo, &p.Referencia, &p.Descripcion, &p.Ext1, &p.UM,
 		&p.CedulaOperario, &p.NombreOperario, &p.CantidadPrestada,
 		&p.Estado, &p.FechaPrestamo, &fechaDevolucion,
 		&p.IDUsuarioPrestamista, &p.NombreUsuarioPrestamista,
+		&condicion, &observacion,
 		&p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
@@ -73,6 +77,12 @@ func (r *repositorioPrestamoMySQL) ObtenerPrestamoPorID(ctx context.Context, id 
 	if fechaDevolucion.Valid {
 		p.FechaDevolucion = &fechaDevolucion.Time
 	}
+	if condicion.Valid {
+		p.CondicionDevolucion = condicion.String
+	}
+	if observacion.Valid {
+		p.ObservacionesDevolucion = observacion.String
+	}
 
 	return &p, nil
 }
@@ -84,6 +94,7 @@ func (r *repositorioPrestamoMySQL) ListarPrestamos(ctx context.Context, estado, 
 			cedula_operario, nombre_operario, cantidad_prestada,
 			estado, fecha_prestamo, fecha_devolucion,
 			id_usuario_prestamista, nombre_usuario_prestamista,
+			condicion_devolucion, observaciones_devolucion,
 			created_at, updated_at
 		FROM prestamos WHERE 1=1`
 	var args []interface{}
@@ -118,6 +129,7 @@ func (r *repositorioPrestamoMySQL) ListarPrestamosPorOperario(ctx context.Contex
 			cedula_operario, nombre_operario, cantidad_prestada,
 			estado, fecha_prestamo, fecha_devolucion,
 			id_usuario_prestamista, nombre_usuario_prestamista,
+			condicion_devolucion, observaciones_devolucion,
 			created_at, updated_at
 		FROM prestamos WHERE cedula_operario = ?`
 	args := []interface{}{cedula}
@@ -143,11 +155,14 @@ func (r *repositorioPrestamoMySQL) scanPrestamos(rows *sql.Rows) ([]domain.Prest
 	for rows.Next() {
 		var p domain.Prestamo
 		var fechaDevolucion sql.NullTime
+		var condicion sql.NullString
+		var observacion sql.NullString
 		err := rows.Scan(
 			&p.IDPrestamo, &p.Referencia, &p.Descripcion, &p.Ext1, &p.UM,
 			&p.CedulaOperario, &p.NombreOperario, &p.CantidadPrestada,
 			&p.Estado, &p.FechaPrestamo, &fechaDevolucion,
 			&p.IDUsuarioPrestamista, &p.NombreUsuarioPrestamista,
+			&condicion, &observacion,
 			&p.CreatedAt, &p.UpdatedAt,
 		)
 		if err != nil {
@@ -156,19 +171,35 @@ func (r *repositorioPrestamoMySQL) scanPrestamos(rows *sql.Rows) ([]domain.Prest
 		if fechaDevolucion.Valid {
 			p.FechaDevolucion = &fechaDevolucion.Time
 		}
+		if condicion.Valid {
+			p.CondicionDevolucion = condicion.String
+		}
+		if observacion.Valid {
+			p.ObservacionesDevolucion = observacion.String
+		}
 		prestamos = append(prestamos, p)
 	}
 	return prestamos, rows.Err()
 }
 
-// ActualizarEstadoPrestamo actualiza el estado y opcionalmente la fecha de devolución
-func (r *repositorioPrestamoMySQL) ActualizarEstadoPrestamo(ctx context.Context, id int64, estado string, fechaDevolucion *time.Time) error {
+// ActualizarEstadoPrestamo actualiza el estado y opcionalmente la fecha de devolución y observaciones
+func (r *repositorioPrestamoMySQL) ActualizarEstadoPrestamo(ctx context.Context, id int64, estado string, fechaDevolucion *time.Time, condicion string, observacion string) error {
 	query := "UPDATE prestamos SET estado = ?"
 	args := []interface{}{estado}
 
 	if fechaDevolucion != nil {
 		query += ", fecha_devolucion = ?"
 		args = append(args, *fechaDevolucion)
+	}
+
+	if condicion != "" {
+		query += ", condicion_devolucion = ?"
+		args = append(args, condicion)
+	}
+
+	if observacion != "" {
+		query += ", observaciones_devolucion = ?"
+		args = append(args, observacion)
 	}
 
 	query += " WHERE id_prestamo = ?"

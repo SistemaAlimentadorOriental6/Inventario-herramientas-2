@@ -48,14 +48,14 @@ router.beforeEach((to, from, next) => {
   // Redirigir si ya está logueado e intenta ir al login
   if (to.name === 'login' && estaAutenticado) {
     if (rol === 'admin') return next('/dashboard/admin')
+    if (rol === 'inventario') return next('/dashboard/prestamo')
     return next('/dashboard/stock')
   }
 
-  // Acceso especial a prestamo: solo cedula 1083462461 (campo empleado)
-  const cedulaPrestamo = authStore.usuario?.empleado
+  // Acceso a prestamo: solo administradores o el rol inventario
   if (to.path === '/dashboard/prestamo') {
-    if (cedulaPrestamo !== '1083462461') {
-      return next('/dashboard/admin')
+    if (rol !== 'admin' && rol !== 'inventario') {
+      return next('/dashboard/stock')
     }
     return next()
   }
@@ -71,6 +71,13 @@ router.beforeEach((to, from, next) => {
   if (estaAutenticado && rol === 'operario') {
     if (to.path.startsWith('/dashboard') && to.path !== '/dashboard/stock') {
       return next('/dashboard/stock')
+    }
+  }
+
+  // Inventario: solo puede estar en /dashboard/prestamo
+  if (estaAutenticado && rol === 'inventario') {
+    if (to.path.startsWith('/dashboard') && to.path !== '/dashboard/prestamo') {
+      return next('/dashboard/prestamo')
     }
   }
 

@@ -396,10 +396,14 @@ async function confirmarPrestamo() {
   }
 }
 
-async function confirmarDevolucion(responsable: any) {
-  if (!herramientaSeleccionada.value) return
+async function confirmarDevolucion() {
+  if (!herramientaSeleccionada.value || !responsableADevolver.value) return
 
+  const responsable = responsableADevolver.value
   const toolId = herramientaSeleccionada.value.id
+
+  // Cerrar formulario y modal si corresponde
+  mostrarFormularioDevolucion.value = false
 
   // Cerrar modal de inmediato si es el último
   if (herramientaSeleccionada.value.prestadosA.length <= 1) {
@@ -427,7 +431,10 @@ async function confirmarDevolucion(responsable: any) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({})
+      body: JSON.stringify({
+        estado: estadoHerramienta.value,
+        observaciones: observacionesHerramienta.value
+      })
     })
 
     if (!respuesta.ok) {
@@ -461,6 +468,43 @@ async function confirmarDevolucion(responsable: any) {
 function logout() {
   authStore.cerrarSesion()
   router.push('/login')
+}
+
+const responsableADevolver = ref<any>(null)
+const mostrarFormularioDevolucion = ref(false)
+const estadoHerramienta = ref('')
+const observacionesHerramienta = ref('')
+const menuEstadoAbierto = ref(false)
+
+function prepararDevolucion(responsable: any) {
+  responsableADevolver.value = responsable
+  mostrarFormularioDevolucion.value = true
+  estadoHerramienta.value = ''
+  observacionesHerramienta.value = ''
+}
+
+function calcularTiempoTranscurrido(fechaStr: string) {
+  if (!fechaStr) return ''
+  const fechaPrestamo = new Date(fechaStr)
+  const ahora = new Date()
+  const diffMs = ahora.getTime() - fechaPrestamo.getTime()
+  
+  if (diffMs < 0) return 'Hace un momento'
+  
+  const segundos = Math.floor(diffMs / 1000)
+  const minutos = Math.floor(segundos / 60)
+  const horas = Math.floor(minutos / 60)
+  const dias = Math.floor(horas / 24)
+
+  const rMinutos = minutos % 60
+  const rHoras = horas % 24
+
+  let partes = []
+  if (dias > 0) partes.push(`${dias} ${dias === 1 ? 'día' : 'días'}`)
+  if (rHoras > 0) partes.push(`${rHoras} ${rHoras === 1 ? 'hora' : 'horas'}`)
+  if (rMinutos > 0 || partes.length === 0) partes.push(`${rMinutos} ${rMinutos === 1 ? 'minuto' : 'minutos'}`)
+
+  return `Hace ${partes.join(', ')}`
 }
 </script>
 
@@ -625,7 +669,7 @@ function logout() {
             >LIBRES</button>
             <button 
               @click="filtroEstado = 'Prestados'"
-              :class="['px-4 py-1.5 text-[0.6rem] font-black rounded-lg transition-all', filtroEstado === 'Prestados' ? 'bg-[#f97316] text-white shadow-md' : 'text-slate-400 hover:text-slate-600']"
+              :class="['px-4 py-1.5 text-[0.6rem] font-black rounded-lg transition-all', filtroEstado === 'Prestados' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600']"
             >EN USO</button>
           </div>
         </div>
@@ -779,7 +823,7 @@ function logout() {
                 :class="[
                   'flex-1 py-3.5 rounded-2xl font-black text-[0.65rem] uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2',
                   herramienta.prestadosA.length > 0
-                    ? 'bg-[#f97316] text-white hover:brightness-95 hover:shadow-[0_8px_16px_rgba(249,115,22,0.3)] hover:-translate-y-0.5 active:scale-95 cursor-pointer'
+                    ? 'bg-emerald-600 text-white hover:brightness-95 hover:shadow-[0_8px_16px_rgba(5,150,105,0.3)] hover:-translate-y-0.5 active:scale-95 cursor-pointer'
                     : 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-70'
                 ]"
               >
@@ -963,7 +1007,7 @@ function logout() {
                       <div :class="[
                         'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-sm transition-colors',
                         p.prestamosActivos > 0 
-                          ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-amber-500/10' 
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-emerald-500/10' 
                           : 'bg-slate-50 border-slate-200 text-slate-500'
                       ]">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -1041,8 +1085,8 @@ function logout() {
             >
               <!-- Header -->
               <div class="px-8 pt-8 pb-6 border-b border-slate-50 shrink-0 flex items-center justify-between">
-                <div class="flex items-center gap-4 text-orange-600">
-                  <div class="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center">
+                <div class="flex items-center gap-4 text-green-600">
+                  <div class="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v10l4.5 4.5"></path><circle cx="12" cy="12" r="10"></circle></svg>
                   </div>
                   <div>
@@ -1055,63 +1099,149 @@ function logout() {
                 </button>
               </div>
 
-              <!-- Lista de personas que tienen la herramienta -->
-              <div class="p-6 overflow-y-auto">
-                <div class="flex items-center gap-3 mb-6">
-                  <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z"/>
-                    </svg>
+              <!-- Lista de personas o Formulario -->
+              <div class="p-6 overflow-y-auto min-h-[300px]">
+                
+                <!-- Vista de Lista de Responsables -->
+                <div v-if="!mostrarFormularioDevolucion">
+                  <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-lg shadow-green-500/20">
+                      <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="text-sm font-black text-slate-800">Responsables Actuales</p>
+                      <p class="text-xs font-medium text-slate-400">{{ herramientaSeleccionada?.prestadosA?.length || 0 }} persona(s) con esta herramienta</p>
+                    </div>
                   </div>
-                  <div>
-                    <p class="text-sm font-black text-slate-800">Responsables Actuales</p>
-                    <p class="text-xs font-medium text-slate-400">{{ herramientaSeleccionada?.prestadosA?.length || 0 }} persona(s) con esta herramienta</p>
+
+                  <div class="space-y-3">
+                    <div
+                      v-for="(responsable, index) in herramientaSeleccionada?.prestadosA"
+                      :key="responsable.id"
+                      class="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white hover:border-green-200 hover:shadow-xl hover:shadow-green-500/10 transition-all duration-300"
+                      :style="{ animationDelay: `${(index as number) * 100}ms` }"
+                    >
+                      <!-- Fondo decorativo -->
+                      <div class="absolute inset-0 bg-gradient-to-r from-green-50/0 via-green-50/0 to-green-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                      <div class="relative p-4 flex items-center gap-4">
+                        <div class="relative shrink-0">
+                          <img
+                            :src="construirUrlFoto(responsable.id)"
+                            :alt="responsable.nombre"
+                            class="w-12 h-12 rounded-full object-cover border-2 border-green-200 bg-green-50"
+                            @error="manejarErrorFoto($event, responsable)"
+                          />
+                        </div>
+
+                        <div class="flex-1 min-w-0">
+                          <p class="text-sm font-bold text-slate-800">{{ responsable.nombre }}</p>
+                          <p class="text-xs text-slate-500 mt-0.5">CC: {{ responsable.id }}</p>
+                          <div v-if="responsable.fecha_prestamo" class="flex flex-col mt-0.5">
+                            <p class="text-[0.7rem] text-green-600 font-bold uppercase tracking-wide">
+                              Desde {{ new Date(responsable.fecha_prestamo).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) }} - {{ new Date(responsable.fecha_prestamo).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) }}
+                            </p>
+                            <p class="text-[0.7rem] text-slate-400 font-extrabold italic">
+                              {{ calcularTiempoTranscurrido(responsable.fecha_prestamo) }}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          @click="prepararDevolucion(responsable)"
+                          :disabled="procesandoID === herramientaSeleccionada?.id"
+                          class="shrink-0 px-4 py-2.5 rounded-xl bg-slate-800 text-white text-xs font-bold shadow-md hover:bg-green-500 hover:shadow-green-500/30 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-200 flex items-center gap-2"
+                        >
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                          Devolver
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div class="space-y-3">
-                  <div
-                    v-for="(responsable, index) in herramientaSeleccionada?.prestadosA"
-                    :key="responsable.id"
-                    class="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white hover:border-orange-200 hover:shadow-xl hover:shadow-orange-500/10 transition-all duration-300"
-                    :style="{ animationDelay: `${(index as number) * 100}ms` }"
-                  >
-                    <!-- Fondo decorativo -->
-                    <div class="absolute inset-0 bg-gradient-to-r from-orange-50/0 via-orange-50/0 to-orange-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
-                    <div class="relative p-4 flex items-center gap-4">
-                      <!-- Avatar con foto real del empleado -->
-                      <div class="relative shrink-0">
-                        <img
-                          :src="construirUrlFoto(responsable.id)"
-                          :alt="responsable.nombre"
-                          class="w-12 h-12 rounded-full object-cover border-2 border-orange-200 bg-orange-50"
-                          @error="manejarErrorFoto($event, responsable)"
-                        />
+                <!-- Formulario de Detalles de Devolución -->
+                <div v-else class="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  <div class="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <img :src="construirUrlFoto(responsableADevolver.id)" class="w-16 h-16 rounded-full border-2 border-green-200 object-cover shadow-sm bg-white" @error="manejarErrorFoto($event, responsableADevolver)"/>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-[0.95rem] font-black text-slate-800 truncate">Devolución de {{ responsableADevolver.nombre }}</p>
+                      <div class="flex flex-col gap-0.5 mt-1">
+                        <div class="flex items-center gap-1.5 text-[0.68rem] font-bold text-green-600 uppercase tracking-wide">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                          <span>Préstamo: {{ new Date(responsableADevolver.fecha_prestamo).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) }} - {{ new Date(responsableADevolver.fecha_prestamo).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) }}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[0.68rem] font-black text-slate-400 italic">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                          <span>Tiempo en uso: {{ calcularTiempoTranscurrido(responsableADevolver.fecha_prestamo) }}</span>
+                        </div>
                       </div>
-
-                      <!-- Info del responsable -->
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-bold text-slate-800">{{ responsable.nombre }}</p>
-                        <p class="text-xs text-slate-500 mt-0.5">CC: {{ responsable.id }}</p>
-                        <p v-if="responsable.fecha_prestamo" class="text-xs text-orange-600 font-medium mt-0.5">
-                          Desde {{ new Date(responsable.fecha_prestamo).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) }}
-                        </p>
-                      </div>
-
-                      <!-- Botón de acción -->
-                      <button
-                        @click="confirmarDevolucion(responsable)"
-                        :disabled="procesandoID === herramientaSeleccionada?.id"
-                        class="shrink-0 px-4 py-2.5 rounded-xl bg-slate-800 text-white text-xs font-bold shadow-md hover:bg-orange-500 hover:shadow-orange-500/30 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-200 flex items-center gap-2"
-                      >
-                        <span v-if="procesandoID === herramientaSeleccionada?.id" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        {{ procesandoID === herramientaSeleccionada?.id ? 'Procesando...' : 'Devolver' }}
-                      </button>
                     </div>
+                  </div>
+
+                  <div class="flex flex-col gap-2 relative">
+                    <label class="text-[0.65rem] font-black text-slate-400 uppercase tracking-widest pl-1">Estado de la Herramienta (Opcional)</label>
+                    <div 
+                      @click="menuEstadoAbierto = !menuEstadoAbierto"
+                      class="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl text-sm font-bold text-slate-700 flex items-center justify-between cursor-pointer hover:border-green-200 transition-all shadow-sm"
+                      :class="{'border-green-400 ring-4 ring-green-50': menuEstadoAbierto}"
+                    >
+                      <span :class="{'text-slate-300': !estadoHerramienta}">{{ estadoHerramienta || 'Seleccione estado...' }}</span>
+                      <svg class="transition-transform duration-300" :class="{'rotate-180': menuEstadoAbierto}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+
+                    <!-- Opciones personalizadas -->
+                    <Transition name="fade-slide">
+                      <div v-if="menuEstadoAbierto" class="absolute top-[105%] left-0 w-full bg-white border border-slate-100 shadow-2xl rounded-2xl p-2 z-[70]">
+                        <div 
+                          v-for="opcion in ['Mal estado', 'Sucia', 'No entrega']" :key="opcion"
+                          @click="estadoHerramienta = opcion; menuEstadoAbierto = false"
+                          :class="[
+                            'px-4 py-3 text-sm font-bold rounded-xl cursor-pointer transition-all flex items-center justify-between',
+                            estadoHerramienta === opcion ? 'bg-green-50 text-green-700' : 'text-slate-600 hover:bg-slate-50'
+                          ]"
+                        >
+                          {{ opcion }}
+                          <svg v-if="estadoHerramienta === opcion" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <div 
+                          @click="estadoHerramienta = ''; menuEstadoAbierto = false"
+                          class="px-4 py-3 text-sm font-bold text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-xl cursor-pointer transition-all mt-1 border-t border-slate-50"
+                        >
+                          Limpiar selección
+                        </div>
+                      </div>
+                    </Transition>
+                  </div>
+
+                  <div class="flex flex-col gap-2">
+                    <label class="text-[0.65rem] font-black text-slate-400 uppercase tracking-widest pl-1">Observaciones / Comentarios</label>
+                    <textarea 
+                      v-model="observacionesHerramienta"
+                      rows="3"
+                      placeholder="Escribe aquí cualquier detalle relevante sobre el estado físico o funcional..."
+                      class="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl text-sm font-medium text-slate-700 focus:outline-none focus:border-green-400 focus:ring-4 focus:ring-green-50 transition-all resize-none placeholder:text-slate-300"
+                    ></textarea>
+                  </div>
+
+                  <div class="flex gap-3 pt-2">
+                    <button 
+                      @click="mostrarFormularioDevolucion = false"
+                      class="flex-1 py-4 rounded-2xl bg-slate-100 text-slate-400 text-[0.7rem] font-black uppercase tracking-widest hover:bg-slate-200 hover:text-slate-600 transition-all active:scale-95"
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      @click="confirmarDevolucion"
+                      class="flex-[2] py-4 rounded-2xl bg-green-600 text-white text-[0.7rem] font-black uppercase tracking-widest shadow-lg shadow-green-500/20 hover:brightness-95 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                      Guardar Devolución
+                    </button>
                   </div>
                 </div>
               </div>

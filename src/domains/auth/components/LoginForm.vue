@@ -14,8 +14,8 @@ const router = useRouter()
 const identificador = ref('')
 const contrasena = ref('')
 
-// Detecta si es email (admin/operario) o cédula (empleado)
-const esEmail = computed(() => identificador.value.includes('@'))
+// Detecta si es email (admin/operario) o cédula (empleado) o usuario especial
+const esEmail = computed(() => identificador.value.includes('@') || identificador.value.trim() === 'inventario_herramientas')
 const esCedula = computed(() => /^\d+$/.test(identificador.value.trim()))
 
 const puedeEnviar = computed(() => {
@@ -49,10 +49,13 @@ async function onSubmit() {
   }
 
   if (!authStore.error) {
-    // Usuario específico que debe ir a prestamo en lugar de stock
-    const emailUsuario = authStore.usuario?.email?.toLowerCase()
-    const cedulaUsuario = authStore.usuario?.empleado
-    const esUsuarioPrestamo = emailUsuario === 'miguel.rodriguez@sao6.com.co' || cedulaUsuario === '1083462461'
+    // Solo el usuario especial de inventario entra a /dashboard/prestamo
+    const user = authStore.usuario
+    const idIngresado = identificador.value.trim().toLowerCase()
+    const emailReal = user?.email?.toLowerCase()
+    
+    // Los usuarios con rol 'inventario' van exclusivamente a /dashboard/prestamo
+    const esUsuarioPrestamo = user?.rol === 'inventario'
 
     router.push(esUsuarioPrestamo ? '/dashboard/prestamo' : '/dashboard/stock')
   }
