@@ -52,6 +52,7 @@ const herramientasFiltradas = computed(() => {
     const query = normalizar(busqueda.value)
     filtradas = filtradas.filter(h =>
       normalizar(h.nombre).includes(query) ||
+      normalizar(h.nombreOriginal).includes(query) ||
       normalizar(h.codigo).includes(query) ||
       normalizar(h.marca).includes(query)
     )
@@ -181,7 +182,8 @@ async function seleccionarCarrito(c: DetalleCarrito) {
     herramientas.value = res.items.map((item, idx) => ({
       id: idx + 1,
       codigo: item.referencia.trim(),
-      nombre: item.descripcion.trim(),
+      nombre: item.nombre_inteligente || item.descripcion.trim(),
+      nombreOriginal: item.descripcion.trim(),
       marca: item.ext1.trim() || 'SIN MARCA',
       marcaOriginal: item.ext1.trim() || 'SIN MARCA',
       cantidad: item.existencia,
@@ -713,7 +715,12 @@ function logout() {
             </div>
             <div class="flex flex-col gap-1 pt-0.5 relative">
               <h3 class="text-base font-extrabold text-slate-800 leading-snug group-hover:text-green-600 transition-colors" v-html="resaltarTexto(h.nombre, busqueda)"></h3>
-              <p class="text-xs font-bold text-slate-400 tracking-wide" v-html="resaltarTexto(h.codigo, busqueda)"></p>
+              <div class="flex flex-col gap-0.5">
+                <p class="text-xs font-bold text-slate-400 tracking-wide" v-html="resaltarTexto(h.codigo, busqueda)"></p>
+                <p v-if="h.nombreOriginal && h.nombre !== h.nombreOriginal" 
+                   class="text-[0.6rem] font-bold text-slate-300 uppercase truncate"
+                   v-html="resaltarTexto(h.nombreOriginal, busqueda)"></p>
+              </div>
               <!-- Indicador de Completado -->
               <div v-if="h.completado" class="absolute -top-1 -right-2 bg-green-500 text-white rounded-full p-1 shadow-lg ring-2 ring-white">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><polyline points="20 6 9 17 4 12"></polyline></svg>

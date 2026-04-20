@@ -213,17 +213,30 @@ func (r *repositorioPrestamoMySQL) ActualizarEstadoPrestamo(ctx context.Context,
 }
 
 // SumarCantidadPrestadaPorReferencia suma las cantidades prestadas activas de una referencia
+// descontando las devoluciones parciales que ya se han realizado.
 func (r *repositorioPrestamoMySQL) SumarCantidadPrestadaPorReferencia(ctx context.Context, referencia string) (float64, error) {
 	query := `
-		SELECT COALESCE(SUM(cantidad_prestada), 0)
-		FROM prestamos
-		WHERE referencia = ? AND estado IN ('activo', 'parcial')`
+		SELECT 
+			COALESCE(SUM(p.cantidad_prestada), 0) - COALESCE(SUM(d.total_devuelto), 0) as total_en_uso
+		FROM prestamos p
+		LEFT JOIN (
+			SELECT id_prestamo, SUM(cantidad_devuelta) as total_devuelto
+			FROM prestamo_devoluciones
+			GROUP BY id_prestamo
+		) d ON p.id_prestamo = d.id_prestamo
+		WHERE p.referencia = ? AND p.estado IN ('activo', 'parcial')`
 
 	var suma float64
 	err := r.db.QueryRowContext(ctx, query, referencia).Scan(&suma)
 	if err != nil {
-		return 0, fmt.Errorf("error al sumar cantidad prestada: %w", err)
+		return 0, fmt.Errorf("error al sumar cantidad prestada real: %w", err)
 	}
+	
+	// Por seguridad, asegurarnos de que no retorne números negativos si algo raro pasa en BD
+	if suma < 0 {
+		suma = 0
+	}
+	
 	return suma, nil
 }
 

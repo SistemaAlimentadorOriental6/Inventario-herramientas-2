@@ -28,6 +28,7 @@ type ItemCarritoDetallado struct {
 	UM          string  `json:"um"`
 	Existencia  float64 `json:"existencia"`
 	Completado  int     `json:"completado"` // 1 = sí fue guardado, 2 = no
+	NombreInteligente string `json:"nombre_inteligente,omitempty"`
 }
 
 // FilaUbicacion representa una fila de la vista vw_Ubicaciones en SQL Server con todos los campos necesarios
@@ -100,6 +101,7 @@ type ItemPrestamo struct {
 	UM           string  `json:"f_um"`
 	Existencia   float64 `json:"f_cant_existencia_1"`
 	Bodega       string  `json:"v400_bodega"`
+	NombreInteligente string `json:"nombre_inteligente,omitempty"`
 }
 
 // RespuestaItemsPrestamo envuelve la lista de ítems disponibles para préstamo

@@ -12,6 +12,7 @@ export interface ItemCarritoDetallado {
   um: string;
   existencia: number;
   completado: 1 | 2; // 1 = Sí, 2 = No
+  nombre_inteligente?: string;
 }
 
 export interface RespuestaCarritosAsignados {

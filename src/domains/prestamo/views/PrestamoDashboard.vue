@@ -50,7 +50,8 @@ async function cargarItemsPrestamo() {
     herramientas.value = (data.items || []).map((item: any, index: number) => ({
       id: index + 1,
       codigo: item.f_referencia || '',
-      nombre: item.f_desc_item || '',
+      nombre: item.nombre_inteligente || item.f_desc_item || '',
+      nombreOriginal: item.f_desc_item || '',
       marca: item.f121_id_ext1_detalle || '',
       categoria: 'General',
       disponible: (item.f_cant_existencia_1 || 0) > 0,
@@ -140,6 +141,7 @@ const herramientasFiltradas = computed(() => {
     const query = normalizar(busqueda.value)
     filtradas = filtradas.filter(h => 
       normalizar(h.nombre).includes(query) || 
+      normalizar(h.nombreOriginal).includes(query) ||
       normalizar(h.codigo).includes(query) ||
       normalizar(h.marca).includes(query)
     )
@@ -931,7 +933,12 @@ function calcularTiempoTranscurrido(fechaStr: string) {
             <!-- Info principal -->
             <div class="mb-6 z-10 flex-1">
               <h3 class="text-lg font-black text-slate-800 leading-tight mb-1 group-hover:text-green-600 transition-colors" v-html="resaltarTexto(herramienta.nombre, busqueda)"></h3>
-              <p class="text-sm font-semibold text-slate-400" v-html="resaltarTexto(herramienta.codigo, busqueda)"></p>
+              <div class="flex flex-col gap-0.5">
+                <p class="text-sm font-semibold text-slate-400" v-html="resaltarTexto(herramienta.codigo, busqueda)"></p>
+                <p v-if="herramienta.nombreOriginal && herramienta.nombre !== herramienta.nombreOriginal" 
+                   class="text-[0.65rem] font-bold text-slate-300 uppercase truncate"
+                   v-html="resaltarTexto(herramienta.nombreOriginal, busqueda)"></p>
+              </div>
             </div>
 
             <div class="w-full flex items-center justify-between mb-6 z-10">

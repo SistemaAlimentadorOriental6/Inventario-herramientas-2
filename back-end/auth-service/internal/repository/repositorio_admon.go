@@ -10,4 +10,6 @@ type RepositorioAdmon interface {
 	ObtenerMarcas(ctx context.Context) ([]string, error)
 	// ContarTotalPartes retorna el total de registros en la tabla lista_partes
 	ContarTotalPartes(ctx context.Context) (int, error)
+	// ObtenerNombresPorReferencia busca los nombres inteligentes en lista_partes para un set de referencias
+	ObtenerNombresPorReferencia(ctx context.Context, referencias []string) (map[string]string, error)
 }

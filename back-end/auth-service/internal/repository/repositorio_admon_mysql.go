@@ -51,3 +51,38 @@ func (r *repositorioAdmonMySQL) ContarTotalPartes(ctx context.Context) (int, err
 	
 	return total, nil
 }
+
+func (r *repositorioAdmonMySQL) ObtenerNombresPorReferencia(ctx context.Context, referencias []string) (map[string]string, error) {
+	if len(referencias) == 0 {
+		return make(map[string]string), nil
+	}
+
+	// Construir query dinámica para IN
+	query := "SELECT referencia_inteligente, nombre FROM lista_partes WHERE referencia_inteligente IN ("
+	args := make([]interface{}, len(referencias))
+	for i, ref := range referencias {
+		query += "?"
+		if i < len(referencias)-1 {
+			query += ","
+		}
+		args[i] = ref
+	}
+	query += ")"
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("error al consultar nombres por referencia en ADMON: %w", err)
+	}
+	defer rows.Close()
+
+	nombres := make(map[string]string)
+	for rows.Next() {
+		var ref, nombre string
+		if err := rows.Scan(&ref, &nombre); err != nil {
+			return nil, fmt.Errorf("error al escanear nombre de ADMON: %w", err)
+		}
+		nombres[ref] = nombre
+	}
+
+	return nombres, nil
+}

@@ -129,6 +129,22 @@ func (s *servicioCarritoImpl) ObtenerDetalladoCarrito(ctx context.Context, idUsu
 		}
 	}
 
+	// 4. Poblar nombres inteligentes desde ADMON
+	referencias := make([]string, 0, len(items))
+	for _, item := range items {
+		referencias = append(referencias, strings.TrimSpace(item.Referencia))
+	}
+
+	nombresAdmon, _ := s.repoAdmon.ObtenerNombresPorReferencia(ctx, referencias)
+	if nombresAdmon != nil {
+		for i := range items {
+			refLimpia := strings.TrimSpace(items[i].Referencia)
+			if nombre, ok := nombresAdmon[refLimpia]; ok {
+				items[i].NombreInteligente = nombre
+			}
+		}
+	}
+
 	return &domain.RespuestaDetalladoCarrito{
 		TotalProductos: len(items),
 		Items:          items,
@@ -423,6 +439,22 @@ func (s *servicioCarritoImpl) ObtenerDetalladoCarritoPorCedula(ctx context.Conte
 				Existencia:  fila.Existencia,
 				Completado:  2, // No completado por defecto para visualizadores
 			})
+		}
+	}
+
+	// 2. Poblar nombres inteligentes desde ADMON
+	referencias := make([]string, 0, len(items))
+	for _, item := range items {
+		referencias = append(referencias, strings.TrimSpace(item.Referencia))
+	}
+
+	nombresAdmon, _ := s.repoAdmon.ObtenerNombresPorReferencia(ctx, referencias)
+	if nombresAdmon != nil {
+		for i := range items {
+			refLimpia := strings.TrimSpace(items[i].Referencia)
+			if nombre, ok := nombresAdmon[refLimpia]; ok {
+				items[i].NombreInteligente = nombre
+			}
 		}
 	}
 
