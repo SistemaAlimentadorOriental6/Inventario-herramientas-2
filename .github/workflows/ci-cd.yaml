@@ -77,7 +77,11 @@ jobs:
       - name: Deploy a directorio de producción
         run: |
           mkdir -p /var/www/mantenimiento/inventario-herramientas
-          cp -r . /var/www/mantenimiento/inventario-herramientas/
+          rsync -av \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='back-end/auth-service/server' \
+            ./ /var/www/mantenimiento/inventario-herramientas/
       
       - name: Build del Backend Go
         run: |
