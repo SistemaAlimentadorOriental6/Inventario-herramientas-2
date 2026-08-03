@@ -111,7 +111,7 @@ const asignacionPorCarrito = computed(() => {
   const mapa = new Map<string, UsuarioGestion>()
   for (const persona of personal.value) {
     for (const carrito of persona.carritos) {
-      mapa.set(String(carrito), persona)
+      mapa.set(String(carrito).trim(), persona)
     }
   }
   return mapa
@@ -134,6 +134,15 @@ const carritosUsuarioSeleccionado = computed(() => {
   return [...personalSeleccionado.value.carritos].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
 })
 
+function obtenerClaveCarrito(c: CarritoGeneralApi): string {
+  return (c.nombre_completo || c.numero_carrito).trim()
+}
+
+function obtenerDuenoCarrito(c: CarritoGeneralApi): UsuarioGestion | undefined {
+  const clave = obtenerClaveCarrito(c)
+  return asignacionPorCarrito.value.get(clave) ?? asignacionPorCarrito.value.get(c.numero_carrito.trim())
+}
+
 const carritosCatalogoFiltrados = computed(() => {
   const q = busquedaCarritoModal.value.trim().toLowerCase()
   return carritosCatalogo.value.filter((carrito) => {
@@ -141,7 +150,8 @@ const carritosCatalogoFiltrados = computed(() => {
     const cumpleBusqueda = q === '' || textoBase.includes(q)
     if (!cumpleBusqueda) return false
     if (!soloDisponibles.value) return true
-    return !asignacionPorCarrito.value.has(carrito.numero_carrito)
+    const clave = obtenerClaveCarrito(carrito)
+    return !asignacionPorCarrito.value.has(clave) && !asignacionPorCarrito.value.has(carrito.numero_carrito)
   })
 })
 
@@ -267,7 +277,6 @@ async function ejecutarGestionCarrito(numeroCarrito: string, endpoint: '/carrito
 
   try {
     const token = obtenerTokenSeguro()
-    const numeroNormalizado = convertirNumeroCarrito(numeroCarrito)
 
     const respuesta = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
@@ -277,7 +286,7 @@ async function ejecutarGestionCarrito(numeroCarrito: string, endpoint: '/carrito
       },
       body: JSON.stringify({
         id_usuario: personalSeleccionado.value.id,
-        numero_carrito: numeroNormalizado
+        numero_carrito: numeroCarrito.trim()
       })
     })
 
@@ -677,7 +686,7 @@ onMounted(() => {
 
                       <!-- Listado de carritos -->
                       <div class="flex flex-col gap-5">
-                        <div v-for="c in carritosCatalogoFiltrados" :key="c.numero_carrito" class="bg-white border border-slate-100 rounded-[2rem] p-6 flex items-center gap-7 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all group">
+                        <div v-for="c in carritosCatalogoFiltrados" :key="`${c.numero_carrito}-${c.nombre_completo}`" class="bg-white border border-slate-100 rounded-[2rem] p-6 flex items-center gap-7 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all group">
                           <div class="w-16 h-16 rounded-[1.25rem] bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0 group-hover:bg-orange-100 transition-colors">
                             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
                           </div>
@@ -688,20 +697,20 @@ onMounted(() => {
                                 <span class="w-1 h-1 rounded-full bg-slate-300"></span>
                                 <span class="text-[0.65rem] font-black text-slate-400 tracking-wider">CÉDULA: {{ c.cedula || 'N/A' }}</span>
                                 <span class="text-[0.65rem] font-black px-2.5 py-0.5 rounded-full border"
-                                  :class="asignacionPorCarrito.get(c.numero_carrito) ? 'text-orange-600 bg-orange-50 border-orange-100' : 'text-green-600 bg-green-50 border-green-100'">
-                                  {{ asignacionPorCarrito.get(c.numero_carrito) ? 'EN USO' : 'DISPONIBLE' }}
+                                  :class="obtenerDuenoCarrito(c) ? 'text-orange-600 bg-orange-50 border-orange-100' : 'text-green-600 bg-green-50 border-green-100'">
+                                  {{ obtenerDuenoCarrito(c) ? 'EN USO' : 'DISPONIBLE' }}
                                 </span>
                               </div>
                             </div>
                             <p class="text-[0.75rem] font-black text-slate-600 mb-2 truncate bg-slate-50/80 px-3 py-1 rounded-lg w-fit border border-slate-100">{{ c.nombre_completo || 'SIN UBICACIÓN' }}</p>
                             <div class="flex items-center gap-2 text-[0.65rem] font-black uppercase tracking-[0.1em]"
-                              :class="asignacionPorCarrito.get(c.numero_carrito) ? 'text-orange-400' : 'text-green-500'">
+                              :class="obtenerDuenoCarrito(c) ? 'text-orange-400' : 'text-green-500'">
                               <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                               </div>
-                              <template v-if="asignacionPorCarrito.get(c.numero_carrito)">
+                              <template v-if="obtenerDuenoCarrito(c)">
                                 En uso por:
-                                <span class="text-orange-600">{{ asignacionPorCarrito.get(c.numero_carrito)?.nombre }}</span>
+                                <span class="text-orange-600">{{ obtenerDuenoCarrito(c)?.nombre }}</span>
                               </template>
                               <template v-else>
                                 Sin asignar
@@ -710,28 +719,28 @@ onMounted(() => {
                           </div>
                           <div class="flex items-center gap-2">
                             <button
-                              v-if="!asignacionPorCarrito.get(c.numero_carrito)"
-                              @click="asignarCarrito(c.numero_carrito)"
+                              v-if="!obtenerDuenoCarrito(c)"
+                              @click="asignarCarrito(obtenerClaveCarrito(c))"
                               :disabled="cargandoAccionModal"
                               class="px-4 py-2 rounded-xl bg-green-500 text-white text-[0.65rem] font-black uppercase tracking-wider hover:bg-green-600 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                             >
-                              {{ carritoEstaEnProceso(c.numero_carrito) ? 'Asignando...' : 'Asignar' }}
+                              {{ carritoEstaEnProceso(obtenerClaveCarrito(c)) ? 'Asignando...' : 'Asignar' }}
                             </button>
                             <button
-                              v-else-if="asignacionPorCarrito.get(c.numero_carrito)?.id !== personalSeleccionado?.id"
-                              @click="transferirCarrito(c.numero_carrito)"
+                              v-else-if="obtenerDuenoCarrito(c)?.id !== personalSeleccionado?.id"
+                              @click="transferirCarrito(obtenerClaveCarrito(c))"
                               :disabled="cargandoAccionModal"
                               class="px-4 py-2 rounded-xl bg-orange-500 text-white text-[0.65rem] font-black uppercase tracking-wider hover:bg-orange-600 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                             >
-                              {{ carritoEstaEnProceso(c.numero_carrito) ? 'Transfiriendo...' : 'Transferir' }}
+                              {{ carritoEstaEnProceso(obtenerClaveCarrito(c)) ? 'Transfiriendo...' : 'Transferir' }}
                             </button>
                             <button
                               v-else
-                              @click="quitarCarrito(c.numero_carrito)"
+                              @click="quitarCarrito(obtenerClaveCarrito(c))"
                               :disabled="cargandoAccionModal"
                               class="px-4 py-2 rounded-xl bg-red-500 text-white text-[0.65rem] font-black uppercase tracking-wider hover:bg-red-600 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                             >
-                              {{ carritoEstaEnProceso(c.numero_carrito) ? 'Quitando...' : 'Quitar' }}
+                              {{ carritoEstaEnProceso(obtenerClaveCarrito(c)) ? 'Quitando...' : 'Quitar' }}
                             </button>
                           </div>
                         </div>

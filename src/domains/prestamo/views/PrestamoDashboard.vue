@@ -88,10 +88,10 @@ async function cargarPrestamosActivos() {
     const data = await respuesta.json()
     const prestamos = data.prestamos || []
 
-    // Asociar préstamos a las herramientas
+    // Asociar préstamos a las herramientas (solo para visualización de a quién está prestado)
     prestamos.forEach((prestamo: any) => {
-      const refPrestamo = (prestamo.referencia || '').trim()
-      const herramienta = herramientas.value.find(h => (h.codigo || '').trim() === refPrestamo)
+      const refPrestamo = (prestamo.referencia || '').trim().toUpperCase()
+      const herramienta = herramientas.value.find(h => (h.codigo || '').trim().toUpperCase() === refPrestamo)
       if (herramienta) {
         herramienta.prestadosA.push({
           id_prestamo: prestamo.id_prestamo,
@@ -100,11 +100,6 @@ async function cargarPrestamosActivos() {
           cantidad: prestamo.cantidad_prestada,
           fecha_prestamo: prestamo.fecha_prestamo
         })
-        // Actualizar stock disponible
-        herramienta.stock = Math.max(0, herramienta.stock - prestamo.cantidad_prestada)
-        if (herramienta.stock <= 0) {
-          herramienta.disponible = false
-        }
       }
     })
   } catch (error) {

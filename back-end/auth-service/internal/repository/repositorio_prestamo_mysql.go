@@ -231,12 +231,12 @@ func (r *repositorioPrestamoMySQL) SumarCantidadPrestadaPorReferencia(ctx contex
 	if err != nil {
 		return 0, fmt.Errorf("error al sumar cantidad prestada real: %w", err)
 	}
-	
+
 	// Por seguridad, asegurarnos de que no retorne números negativos si algo raro pasa en BD
 	if suma < 0 {
 		suma = 0
 	}
-	
+
 	return suma, nil
 }
 
@@ -257,7 +257,7 @@ func (r *repositorioPrestamoMySQL) CrearDevolucionParcial(ctx context.Context, d
 func (r *repositorioPrestamoMySQL) SumarDevolucionesPorPrestamo(ctx context.Context, idPrestamo int64) (float64, error) {
 	query := `
 		SELECT COALESCE(SUM(cantidad_devuelta), 0)
-		FROM prestamo_devoluciones
+		FROM prestamos
 		WHERE id_prestamo = ?`
 
 	var suma float64

@@ -16,13 +16,13 @@ import (
 type ServicioCarrito interface {
 	ObtenerCarritosAsignados(ctx context.Context, idUsuario int32) (*domain.RespuestaCarritosAsignados, error)
 	ObtenerCarritosPorCedula(ctx context.Context, cedula string) (*domain.RespuestaCarritosAsignados, error)
-	ObtenerDetalladoCarrito(ctx context.Context, idUsuario int32, numCarrito int32) (*domain.RespuestaDetalladoCarrito, error)
-	ObtenerDetalladoCarritoPorCedula(ctx context.Context, cedula string, numCarrito int32) (*domain.RespuestaDetalladoCarrito, error)
+	ObtenerDetalladoCarrito(ctx context.Context, idUsuario int32, numCarrito string) (*domain.RespuestaDetalladoCarrito, error)
+	ObtenerDetalladoCarritoPorCedula(ctx context.Context, cedula string, numCarrito string) (*domain.RespuestaDetalladoCarrito, error)
 	ObtenerListadoPartes(ctx context.Context) (*domain.RespuestaListadoPartes, error)
 	ObtenerUsuariosConCarritos(ctx context.Context) ([]domain.UsuarioConCarritos, error)
 	ObtenerCarritosGenerales(ctx context.Context) (*domain.RespuestaCarritosGenerales, error)
-	AsignarCarritoAUsuario(ctx context.Context, idUsuario int32, numeroCarrito int32) (*domain.RespuestaAsignacionCarrito, error)
-	QuitarCarritoDeUsuario(ctx context.Context, idUsuario int32, numeroCarrito int32) (*domain.RespuestaQuitarCarrito, error)
+	AsignarCarritoAUsuario(ctx context.Context, idUsuario int32, numeroCarrito string) (*domain.RespuestaAsignacionCarrito, error)
+	QuitarCarritoDeUsuario(ctx context.Context, idUsuario int32, numeroCarrito string) (*domain.RespuestaQuitarCarrito, error)
 	ObtenerUsuariosUbicacion(ctx context.Context) (*domain.RespuestaUsuariosUbicacion, error)
 	ObtenerCumplimientoUsuarios(ctx context.Context) (*domain.RespuestaCumplimientoUsuarios, error)
 }
@@ -67,7 +67,8 @@ func extraerNumeroEmpleado(empleado string) string {
 
 // ObtenerDetalladoCarrito verifica que el carrito pertenezca al usuario,
 // retorna sus ítems desde SQL Server y marca cuáles ya fueron guardados
-func (s *servicioCarritoImpl) ObtenerDetalladoCarrito(ctx context.Context, idUsuario int32, numCarrito int32) (*domain.RespuestaDetalladoCarrito, error) {
+func (s *servicioCarritoImpl) ObtenerDetalladoCarrito(ctx context.Context, idUsuario int32, numCarritoStr string) (*domain.RespuestaDetalladoCarrito, error) {
+	numCarritoStr = strings.TrimSpace(numCarritoStr)
 	// 1. Validar que el carrito pertenezca al usuario en MySQL
 	numeros, err := s.repoCarrito.ObtenerCarritosPorUsuario(ctx, idUsuario)
 	if err != nil {
@@ -76,18 +77,18 @@ func (s *servicioCarritoImpl) ObtenerDetalladoCarrito(ctx context.Context, idUsu
 
 	pertenece := false
 	for _, n := range numeros {
-		if n == numCarrito {
+		if strings.TrimSpace(n) == numCarritoStr {
 			pertenece = true
 			break
 		}
 	}
 
 	if !pertenece {
-		return nil, fmt.Errorf("el carrito %d no está asignado al usuario %d", numCarrito, idUsuario)
+		return nil, fmt.Errorf("el carrito %s no está asignado al usuario %d", numCarritoStr, idUsuario)
 	}
 
 	// 2. Obtener las referencias ya guardadas en MySQL para este usuario+carrito
-	referenciasGuardadas, err := s.repoInventario.ObtenerReferenciasGuardadas(ctx, idUsuario, numCarrito)
+	referenciasGuardadas, err := s.repoInventario.ObtenerReferenciasGuardadas(ctx, idUsuario, numCarritoStr)
 	if err != nil {
 		return nil, fmt.Errorf("error al verificar completados: %w", err)
 	}
@@ -98,15 +99,16 @@ func (s *servicioCarritoImpl) ObtenerDetalladoCarrito(ctx context.Context, idUsu
 		return nil, err
 	}
 
-	numCarritoStr := strconv.Itoa(int(numCarrito))
 	idUsuarioStr := strconv.Itoa(int(idUsuario))
 	var items []domain.ItemCarritoDetallado
 
 	for _, fila := range filas {
-		numUbicacion := extraerNumeroUbicacion(fila.DescUbicacion)
+		nombreUbicacion := strings.TrimSpace(fila.DescUbicacion)
+		numUbicacion := extraerNumeroUbicacion(nombreUbicacion)
 		numEmpleado := extraerNumeroEmpleado(fila.Empleado)
 
-		esDelCarrito := (numUbicacion != "" && numUbicacion == numCarritoStr) ||
+		esDelCarrito := (nombreUbicacion != "" && strings.EqualFold(nombreUbicacion, numCarritoStr)) ||
+			(numUbicacion != "" && numUbicacion == numCarritoStr) ||
 			(numEmpleado != "" && numEmpleado == numCarritoStr) ||
 			(numEmpleado != "" && numEmpleado == idUsuarioStr && numCarritoStr == idUsuarioStr)
 
@@ -177,12 +179,11 @@ func (s *servicioCarritoImpl) ObtenerCarritosAsignados(ctx context.Context, idUs
 	setCarritos := make(map[string]int, len(numerosCarrito))
 
 	for i, num := range numerosCarrito {
-		numStr := strconv.Itoa(int(num))
-		setCarritos[numStr] = i
+		setCarritos[num] = i
 		detalles = append(detalles, domain.DetalleCarrito{
 			NumeroCarrito: num,
 			Registros:     0,
-			Completados:   completadosPorCarrito[num], // conteo desde MySQL
+			Completados:   completadosPorCarrito[num],
 		})
 	}
 
@@ -273,27 +274,32 @@ func (s *servicioCarritoImpl) ObtenerCarritosGenerales(ctx context.Context) (*do
 		return nil, fmt.Errorf("error al obtener filas de ubicaciones: %w", err)
 	}
 
-	porNumero := make(map[string]domain.CarritoGeneral)
+	porUbicacion := make(map[string]domain.CarritoGeneral)
 
 	for _, fila := range filas {
-		numeroTexto := extraerNumeroUbicacion(fila.DescUbicacion)
 		nombreCompleto := strings.TrimSpace(fila.DescUbicacion)
 		cedula := extraerNumeroEmpleado(fila.Empleado)
+		numeroTexto := extraerNumeroUbicacion(nombreCompleto)
+
+		clave := nombreCompleto
+		if clave == "" {
+			clave = cedula
+		}
+
+		if clave == "" {
+			continue
+		}
 
 		numeroCarrito := numeroTexto
 		if numeroCarrito == "" {
 			numeroCarrito = cedula
 		}
 
-		if numeroCarrito == "" {
-			continue
-		}
-
-		actual, existe := porNumero[numeroCarrito]
+		actual, existe := porUbicacion[clave]
 		if !existe {
-			porNumero[numeroCarrito] = domain.CarritoGeneral{
-				NumeroCarrito: numeroCarrito,
-				Cedula:        cedula,
+			porUbicacion[clave] = domain.CarritoGeneral{
+				NumeroCarrito:  numeroCarrito,
+				Cedula:         cedula,
 				NombreCompleto: nombreCompleto,
 			}
 			continue
@@ -306,11 +312,11 @@ func (s *servicioCarritoImpl) ObtenerCarritosGenerales(ctx context.Context) (*do
 			actual.NombreCompleto = nombreCompleto
 		}
 
-		porNumero[numeroCarrito] = actual
+		porUbicacion[clave] = actual
 	}
 
-	carritos := make([]domain.CarritoGeneral, 0, len(porNumero))
-	for _, carrito := range porNumero {
+	carritos := make([]domain.CarritoGeneral, 0, len(porUbicacion))
+	for _, carrito := range porUbicacion {
 		carritos = append(carritos, carrito)
 	}
 
@@ -319,7 +325,10 @@ func (s *servicioCarritoImpl) ObtenerCarritosGenerales(ctx context.Context) (*do
 		numJ, errJ := strconv.Atoi(carritos[j].NumeroCarrito)
 
 		if errI == nil && errJ == nil {
-			return numI < numJ
+			if numI != numJ {
+				return numI < numJ
+			}
+			return carritos[i].NombreCompleto < carritos[j].NombreCompleto
 		}
 
 		if errI == nil {
@@ -330,7 +339,10 @@ func (s *servicioCarritoImpl) ObtenerCarritosGenerales(ctx context.Context) (*do
 			return false
 		}
 
-		return carritos[i].NumeroCarrito < carritos[j].NumeroCarrito
+		if carritos[i].NumeroCarrito != carritos[j].NumeroCarrito {
+			return carritos[i].NumeroCarrito < carritos[j].NumeroCarrito
+		}
+		return carritos[i].NombreCompleto < carritos[j].NombreCompleto
 	})
 
 	return &domain.RespuestaCarritosGenerales{
@@ -339,7 +351,7 @@ func (s *servicioCarritoImpl) ObtenerCarritosGenerales(ctx context.Context) (*do
 	}, nil
 }
 
-func (s *servicioCarritoImpl) AsignarCarritoAUsuario(ctx context.Context, idUsuario int32, numeroCarrito int32) (*domain.RespuestaAsignacionCarrito, error) {
+func (s *servicioCarritoImpl) AsignarCarritoAUsuario(ctx context.Context, idUsuario int32, numeroCarrito string) (*domain.RespuestaAsignacionCarrito, error) {
 	existe, err := s.repoCarrito.ExisteUsuarioOperarioActivo(ctx, idUsuario)
 	if err != nil {
 		return nil, fmt.Errorf("error validando usuario destino: %w", err)
@@ -375,7 +387,7 @@ func (s *servicioCarritoImpl) AsignarCarritoAUsuario(ctx context.Context, idUsua
 	}, nil
 }
 
-func (s *servicioCarritoImpl) QuitarCarritoDeUsuario(ctx context.Context, idUsuario int32, numeroCarrito int32) (*domain.RespuestaQuitarCarrito, error) {
+func (s *servicioCarritoImpl) QuitarCarritoDeUsuario(ctx context.Context, idUsuario int32, numeroCarrito string) (*domain.RespuestaQuitarCarrito, error) {
 	quitado, err := s.repoCarrito.QuitarCarritoDeUsuario(ctx, idUsuario, numeroCarrito)
 	if err != nil {
 		return nil, err
@@ -409,22 +421,24 @@ func (s *servicioCarritoImpl) ObtenerUsuariosUbicacion(ctx context.Context) (*do
 
 // ObtenerDetalladoCarritoPorCedula retorna los ítems de un carrito específico buscando por cédula
 // Sin validación de MySQL (usado por visualizadores)
-func (s *servicioCarritoImpl) ObtenerDetalladoCarritoPorCedula(ctx context.Context, cedula string, numCarrito int32) (*domain.RespuestaDetalladoCarrito, error) {
+func (s *servicioCarritoImpl) ObtenerDetalladoCarritoPorCedula(ctx context.Context, cedula string, numCarritoStr string) (*domain.RespuestaDetalladoCarrito, error) {
+	numCarritoStr = strings.TrimSpace(numCarritoStr)
 	// 1. Obtener todas las filas de SQL Server
 	filas, err := s.repoUbicacion.ObtenerFilasUbicaciones(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	numCarritoStr := strconv.Itoa(int(numCarrito))
 	var items []domain.ItemCarritoDetallado
 
 	for _, fila := range filas {
-		numUbicacion := extraerNumeroUbicacion(fila.DescUbicacion)
+		nombreUbicacion := strings.TrimSpace(fila.DescUbicacion)
+		numUbicacion := extraerNumeroUbicacion(nombreUbicacion)
 		numEmpleado := extraerNumeroEmpleado(fila.Empleado)
 
-		// El carrito debe coincidir con el número solicitado
-		esDelCarrito := (numUbicacion != "" && numUbicacion == numCarritoStr) ||
+		// El carrito debe coincidir con el número/nombre solicitado
+		esDelCarrito := (nombreUbicacion != "" && strings.EqualFold(nombreUbicacion, numCarritoStr)) ||
+			(numUbicacion != "" && numUbicacion == numCarritoStr) ||
 			(numEmpleado != "" && numEmpleado == numCarritoStr)
 
 		// Y debe pertenecer al empleado (por cédula)
@@ -490,7 +504,7 @@ func (s *servicioCarritoImpl) ObtenerCarritosPorCedula(ctx context.Context, cedu
 				carrito.Registros++
 			} else {
 				carritosMap[numCarrito] = &domain.DetalleCarrito{
-					NumeroCarrito: parsearInt32(numCarrito),
+					NumeroCarrito: numCarrito,
 					Nombre:        strings.TrimSpace(fila.DescUbicacion),
 					Registros:     1,
 					Completados:   0,
@@ -570,8 +584,7 @@ func (s *servicioCarritoImpl) ObtenerCumplimientoUsuarios(ctx context.Context) (
 		totalCompletados := 0
 
 		for _, numCarrito := range usuario.Carritos {
-			numCarritoStr := strconv.Itoa(int(numCarrito))
-			registros := registrosPorCarrito[numCarritoStr]
+			registros := registrosPorCarrito[numCarrito]
 			completados := completadosPorCarrito[numCarrito]
 			pendientes := registros - completados
 			if pendientes < 0 {

@@ -96,14 +96,14 @@ func main() {
 	svcCarrito := service.NuevoServicioCarrito(repoCarrito, repoUbicacion, repoInventario, repoAdmon)
 	manejadorCarritos := handlers.NuevoManejadorCarritos(svcCarrito)
 
-	// Servicio de préstamo
-	svcPrestamo := service.NuevoServicioPrestamo(repoUNOEE, repoAdmon)
-	manejadorPrestamo := handlers.NuevoManejadorPrestamo(svcPrestamo)
-
 	// Servicio de préstamo CRUD (gestión de préstamos a operarios)
 	repoPrestamo := repository.NuevoRepositorioPrestamo(dbMySQL)
 	svcPrestamoCRUD := service.NuevoServicioPrestamoCRUD(repoPrestamo, repoUNOEE)
 	manejadorPrestamoCRUD := handlers.NuevoManejadorPrestamoCRUD(svcPrestamoCRUD)
+
+	// Servicio de préstamo
+	svcPrestamo := service.NuevoServicioPrestamo(repoUNOEE, repoAdmon, repoPrestamo)
+	manejadorPrestamo := handlers.NuevoManejadorPrestamo(svcPrestamo)
 
 	// 7. Configurar rutas con prefijo /api
 	mux := http.NewServeMux()

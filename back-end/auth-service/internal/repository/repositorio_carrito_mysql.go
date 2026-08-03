@@ -43,17 +43,17 @@ const queryExisteUsuarioOperarioActivo = `
 	  AND rol = 'operario'
 	LIMIT 1`
 
-// ObtenerCarritosPorUsuario retorna los números de carrito asignados al usuario en MySQL
-func (r *repositorioCarritoMySQL) ObtenerCarritosPorUsuario(ctx context.Context, idUsuario int32) ([]int32, error) {
+// ObtenerCarritosPorUsuario retorna los identificadores/nombres de carrito asignados al usuario en MySQL
+func (r *repositorioCarritoMySQL) ObtenerCarritosPorUsuario(ctx context.Context, idUsuario int32) ([]string, error) {
 	filas, err := r.db.QueryContext(ctx, queryCarritosPorUsuario, idUsuario)
 	if err != nil {
 		return nil, fmt.Errorf("error al consultar carritos del usuario %d: %w", idUsuario, err)
 	}
 	defer filas.Close()
 
-	var carritos []int32
+	var carritos []string
 	for filas.Next() {
-		var num int32
+		var num string
 		if err := filas.Scan(&num); err != nil {
 			return nil, fmt.Errorf("error al leer numero_carrito: %w", err)
 		}
@@ -78,7 +78,7 @@ func (r *repositorioCarritoMySQL) ObtenerUsuariosConCarritos(ctx context.Context
 		var idUsuario int32
 		var nombre sql.NullString
 		var correo sql.NullString
-		var numeroCarrito sql.NullInt64
+		var numeroCarrito sql.NullString
 
 		if err := filas.Scan(&idUsuario, &nombre, &correo, &numeroCarrito); err != nil {
 			return nil, fmt.Errorf("error al leer usuarios con carritos: %w", err)
@@ -90,14 +90,14 @@ func (r *repositorioCarritoMySQL) ObtenerUsuariosConCarritos(ctx context.Context
 				IDUsuario: idUsuario,
 				Nombre:    nombre.String,
 				Correo:    correo.String,
-				Carritos:  []int32{},
+				Carritos:  []string{},
 			})
 			idx = len(resultado) - 1
 			indicePorUsuario[idUsuario] = idx
 		}
 
-		if numeroCarrito.Valid {
-			resultado[idx].Carritos = append(resultado[idx].Carritos, int32(numeroCarrito.Int64))
+		if numeroCarrito.Valid && numeroCarrito.String != "" {
+			resultado[idx].Carritos = append(resultado[idx].Carritos, numeroCarrito.String)
 		}
 	}
 
@@ -123,7 +123,7 @@ func (r *repositorioCarritoMySQL) ExisteUsuarioOperarioActivo(ctx context.Contex
 }
 
 // AsignarCarritoAUsuario asigna un carrito al usuario destino removiéndolo de cualquier usuario previo
-func (r *repositorioCarritoMySQL) AsignarCarritoAUsuario(ctx context.Context, idUsuario int32, numeroCarrito int32) ([]int32, error) {
+func (r *repositorioCarritoMySQL) AsignarCarritoAUsuario(ctx context.Context, idUsuario int32, numeroCarrito string) ([]int32, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error al iniciar transacción de asignación: %w", err)
@@ -141,7 +141,7 @@ func (r *repositorioCarritoMySQL) AsignarCarritoAUsuario(ctx context.Context, id
 		WHERE numero_carrito = ?
 		FOR UPDATE`, numeroCarrito)
 	if err != nil {
-		return nil, fmt.Errorf("error al consultar dueños previos del carrito %d: %w", numeroCarrito, err)
+		return nil, fmt.Errorf("error al consultar dueños previos del carrito %s: %w", numeroCarrito, err)
 	}
 
 	usuariosPrevios := make([]int32, 0)
@@ -149,7 +149,7 @@ func (r *repositorioCarritoMySQL) AsignarCarritoAUsuario(ctx context.Context, id
 		var idPrevio int32
 		if scanErr := rows.Scan(&idPrevio); scanErr != nil {
 			rows.Close()
-			return nil, fmt.Errorf("error al leer dueño previo del carrito %d: %w", numeroCarrito, scanErr)
+			return nil, fmt.Errorf("error al leer dueño previo del carrito %s: %w", numeroCarrito, scanErr)
 		}
 		usuariosPrevios = append(usuariosPrevios, idPrevio)
 	}
@@ -158,13 +158,13 @@ func (r *repositorioCarritoMySQL) AsignarCarritoAUsuario(ctx context.Context, id
 	}
 
 	if _, err = tx.ExecContext(ctx, `DELETE FROM asignaciones_carritos WHERE numero_carrito = ?`, numeroCarrito); err != nil {
-		return nil, fmt.Errorf("error al limpiar asignaciones previas del carrito %d: %w", numeroCarrito, err)
+		return nil, fmt.Errorf("error al limpiar asignaciones previas del carrito %s: %w", numeroCarrito, err)
 	}
 
 	if _, err = tx.ExecContext(ctx, `
 		INSERT INTO asignaciones_carritos (id_usuario, numero_carrito)
 		VALUES (?, ?)`, idUsuario, numeroCarrito); err != nil {
-		return nil, fmt.Errorf("error al asignar carrito %d al usuario %d: %w", numeroCarrito, idUsuario, err)
+		return nil, fmt.Errorf("error al asignar carrito %s al usuario %d: %w", numeroCarrito, idUsuario, err)
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -175,12 +175,12 @@ func (r *repositorioCarritoMySQL) AsignarCarritoAUsuario(ctx context.Context, id
 }
 
 // QuitarCarritoDeUsuario elimina la relación de un carrito con un usuario específico
-func (r *repositorioCarritoMySQL) QuitarCarritoDeUsuario(ctx context.Context, idUsuario int32, numeroCarrito int32) (bool, error) {
+func (r *repositorioCarritoMySQL) QuitarCarritoDeUsuario(ctx context.Context, idUsuario int32, numeroCarrito string) (bool, error) {
 	res, err := r.db.ExecContext(ctx, `
 		DELETE FROM asignaciones_carritos
 		WHERE id_usuario = ? AND numero_carrito = ?`, idUsuario, numeroCarrito)
 	if err != nil {
-		return false, fmt.Errorf("error al quitar carrito %d del usuario %d: %w", numeroCarrito, idUsuario, err)
+		return false, fmt.Errorf("error al quitar carrito %s del usuario %d: %w", numeroCarrito, idUsuario, err)
 	}
 
 	filas, err := res.RowsAffected()

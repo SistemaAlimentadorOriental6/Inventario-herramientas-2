@@ -10,8 +10,8 @@ type RepositorioInventario interface {
 	GuardarRegistros(ctx context.Context, registros []domain.RegistroInventario) (int, error)
 
 	// ObtenerReferenciasGuardadas retorna un set de referencias ya guardadas para usuario+carrito
-	ObtenerReferenciasGuardadas(ctx context.Context, idUsuario int32, numCarrito int32) (map[string]bool, error)
+	ObtenerReferenciasGuardadas(ctx context.Context, idUsuario int32, numCarrito string) (map[string]bool, error)
 
 	// ContarCompletadosPorUsuario retorna un mapa de numero_carrito → cantidad completada para un usuario
-	ContarCompletadosPorUsuario(ctx context.Context, idUsuario int32) (map[int32]int, error)
+	ContarCompletadosPorUsuario(ctx context.Context, idUsuario int32) (map[string]int, error)
 }

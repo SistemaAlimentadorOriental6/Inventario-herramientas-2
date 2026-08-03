@@ -12,15 +12,17 @@ type ServicioPrestamo interface {
 }
 
 type servicioPrestamoImpl struct {
-	repoUNOEE repository.RepositorioUNOEE
-	repoAdmon repository.RepositorioAdmon
+	repoUNOEE    repository.RepositorioUNOEE
+	repoAdmon    repository.RepositorioAdmon
+	repoPrestamo repository.RepositorioPrestamo
 }
 
 // NuevoServicioPrestamo crea la instancia del servicio
-func NuevoServicioPrestamo(repoUNOEE repository.RepositorioUNOEE, repoAdmon repository.RepositorioAdmon) ServicioPrestamo {
+func NuevoServicioPrestamo(repoUNOEE repository.RepositorioUNOEE, repoAdmon repository.RepositorioAdmon, repoPrestamo repository.RepositorioPrestamo) ServicioPrestamo {
 	return &servicioPrestamoImpl{
-		repoUNOEE: repoUNOEE,
-		repoAdmon: repoAdmon,
+		repoUNOEE:    repoUNOEE,
+		repoAdmon:    repoAdmon,
+		repoPrestamo: repoPrestamo,
 	}
 }
 
@@ -45,15 +47,24 @@ func (s *servicioPrestamoImpl) ObtenerItemsPrestamo(ctx context.Context) (*domai
 	nombresAdmon, err := s.repoAdmon.ObtenerNombresPorReferencia(ctx, referencias)
 	if err != nil {
 		// Logueamos el error pero no bloqueamos el proceso principal
-		// ya que el nombre de UNOEE es el fallback
-		// (Aquí idealmente usaríamos un logger real)
 	}
 
-	// Mapear los nombres de ADMON a los items
-	if nombresAdmon != nil {
-		for i := range items {
-			if nombre, ok := nombresAdmon[items[i].Referencia]; ok {
+	// Mapear los nombres de ADMON a los items y descontar prestamos activos de MySQL
+	for i := range items {
+		ref := items[i].Referencia
+		if nombresAdmon != nil {
+			if nombre, ok := nombresAdmon[ref]; ok {
 				items[i].NombreInteligente = nombre
+			}
+		}
+
+		if s.repoPrestamo != nil && ref != "" {
+			prestados, err := s.repoPrestamo.SumarCantidadPrestadaPorReferencia(ctx, ref)
+			if err == nil && prestados > 0 {
+				items[i].Existencia = items[i].Existencia - prestados
+				if items[i].Existencia < 0 {
+					items[i].Existencia = 0
+				}
 			}
 		}
 	}

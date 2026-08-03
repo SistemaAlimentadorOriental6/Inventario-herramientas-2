@@ -51,7 +51,7 @@ func (s *servicioPrestamoCRUDImpl) CrearPrestamo(ctx context.Context, req domain
 
 	disponible := existencia - prestados
 	if req.CantidadPrestada > disponible {
-		return nil, fmt.Errorf("stock insuficiente: solicitado %.2f, disponible %.2f", req.CantidadPrestada, disponible)
+		return nil, fmt.Errorf("stock insuficiente: solicitado %.2f, disponible %.2f (existencia UNOEE: %.2f, prestados activos: %.2f)", req.CantidadPrestada, disponible, existencia, prestados)
 	}
 
 	// Crear el préstamo

@@ -7,11 +7,11 @@ import (
 
 // RepositorioCarrito define el acceso a asignaciones_carritos en MySQL
 type RepositorioCarrito interface {
-	ObtenerCarritosPorUsuario(ctx context.Context, idUsuario int32) ([]int32, error)
+	ObtenerCarritosPorUsuario(ctx context.Context, idUsuario int32) ([]string, error)
 	ObtenerUsuariosConCarritos(ctx context.Context) ([]domain.UsuarioConCarritos, error)
 	ExisteUsuarioOperarioActivo(ctx context.Context, idUsuario int32) (bool, error)
-	AsignarCarritoAUsuario(ctx context.Context, idUsuario int32, numeroCarrito int32) ([]int32, error)
-	QuitarCarritoDeUsuario(ctx context.Context, idUsuario int32, numeroCarrito int32) (bool, error)
+	AsignarCarritoAUsuario(ctx context.Context, idUsuario int32, numeroCarrito string) ([]int32, error)
+	QuitarCarritoDeUsuario(ctx context.Context, idUsuario int32, numeroCarrito string) (bool, error)
 }
 
 // RepositorioUbicacion define el acceso a vw_Ubicaciones en SQL Server

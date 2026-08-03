@@ -2,7 +2,7 @@ package domain
 
 // DetalleCarrito muestra cuántos registros tiene un carrito específico en SQL Server
 type DetalleCarrito struct {
-	NumeroCarrito int32  `json:"numero_carrito"`
+	NumeroCarrito string `json:"numero_carrito"`
 	Nombre        string `json:"nombre"`
 	Registros     int    `json:"registros"`
 	Completados   int    `json:"completados"`
@@ -10,8 +10,8 @@ type DetalleCarrito struct {
 
 // PeticionDetalleCarrito es el cuerpo esperado para el endpoint de detalle
 type PeticionDetalleCarrito struct {
-	IDUsuario     int32 `json:"id_usuario"`
-	NumeroCarrito int32 `json:"numero_carrito"`
+	IDUsuario     int32  `json:"id_usuario"`
+	NumeroCarrito string `json:"numero_carrito"`
 }
 
 // RespuestaDetalladoCarrito envuelve la lista de ítems con el total de productos
@@ -22,13 +22,13 @@ type RespuestaDetalladoCarrito struct {
 
 // ItemCarritoDetallado representa un ítem dentro de un carrito (desde SQL Server)
 type ItemCarritoDetallado struct {
-	Referencia  string  `json:"referencia"`
-	Ext1        string  `json:"ext1"`
-	Descripcion string  `json:"descripcion"`
-	UM          string  `json:"um"`
-	Existencia  float64 `json:"existencia"`
-	Completado  int     `json:"completado"` // 1 = sí fue guardado, 2 = no
-	NombreInteligente string `json:"nombre_inteligente,omitempty"`
+	Referencia        string  `json:"referencia"`
+	Ext1              string  `json:"ext1"`
+	Descripcion       string  `json:"descripcion"`
+	UM                string  `json:"um"`
+	Existencia        float64 `json:"existencia"`
+	Completado        int     `json:"completado"` // 1 = sí fue guardado, 2 = no
+	NombreInteligente string  `json:"nombre_inteligente,omitempty"`
 }
 
 // FilaUbicacion representa una fila de la vista vw_Ubicaciones en SQL Server con todos los campos necesarios
@@ -57,16 +57,16 @@ type RespuestaListadoPartes struct {
 
 // UsuarioConCarritos representa un usuario con sus carritos asignados
 type UsuarioConCarritos struct {
-	IDUsuario int32   `json:"id_usuario"`
-	Nombre    string  `json:"nombre"`
-	Correo    string  `json:"correo"`
-	Carritos  []int32 `json:"carritos"`
+	IDUsuario int32    `json:"id_usuario"`
+	Nombre    string   `json:"nombre"`
+	Correo    string   `json:"correo"`
+	Carritos  []string `json:"carritos"`
 }
 
 // CarritoGeneral representa un carrito existente con datos de persona
 type CarritoGeneral struct {
-	NumeroCarrito string `json:"numero_carrito"`
-	Cedula        string `json:"cedula"`
+	NumeroCarrito  string `json:"numero_carrito"`
+	Cedula         string `json:"cedula"`
 	NombreCompleto string `json:"nombre_completo"`
 }
 
@@ -78,17 +78,17 @@ type RespuestaCarritosGenerales struct {
 
 // RespuestaAsignacionCarrito informa el resultado de asignar/transferir un carrito
 type RespuestaAsignacionCarrito struct {
-	IDUsuarioDestino int32   `json:"id_usuario_destino"`
-	NumeroCarrito    int32   `json:"numero_carrito"`
-	Transferido      bool    `json:"transferido"`
-	UsuariosPrevios  []int32 `json:"usuarios_previos"`
-	Mensaje          string  `json:"mensaje"`
+	IDUsuarioDestino int32    `json:"id_usuario_destino"`
+	NumeroCarrito    string   `json:"numero_carrito"`
+	Transferido      bool     `json:"transferido"`
+	UsuariosPrevios  []int32  `json:"usuarios_previos"`
+	Mensaje          string   `json:"mensaje"`
 }
 
 // RespuestaQuitarCarrito resultado de quitar un carrito de un usuario
 type RespuestaQuitarCarrito struct {
 	IDUsuario     int32  `json:"id_usuario"`
-	NumeroCarrito int32  `json:"numero_carrito"`
+	NumeroCarrito string `json:"numero_carrito"`
 	Quitado       bool   `json:"quitado"`
 	Mensaje       string `json:"mensaje"`
 }
@@ -124,7 +124,7 @@ type RespuestaUsuariosUbicacion struct {
 
 // CumplimientoCarrito representa el estado de cumplimiento de un carrito específico
 type CumplimientoCarrito struct {
-	NumeroCarrito  int32   `json:"numero_carrito"`
+	NumeroCarrito  string  `json:"numero_carrito"`
 	Registros      int     `json:"registros"`
 	Completados    int     `json:"completados"`
 	Pendientes     int     `json:"pendientes"`

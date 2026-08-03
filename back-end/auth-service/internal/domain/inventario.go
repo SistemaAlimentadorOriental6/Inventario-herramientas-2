@@ -5,7 +5,7 @@ import "time"
 // RegistroInventario representa la información a guardar en la tabla registros_inventario
 type RegistroInventario struct {
 	IDUsuario           int32     `json:"id_usuario"`
-	NumeroCarrito       int32     `json:"numero_carrito"`
+	NumeroCarrito       string    `json:"numero_carrito"`
 	NombreCarrito       string    `json:"nombre_carrito"`
 	IDProducto          string    `json:"id_producto"`
 	Referencia          string    `json:"referencia_producto"`

@@ -64,16 +64,13 @@ func (r *repositorioUNOEESQLServer) ObtenerExistenciaPorReferencia(ctx context.C
 	refLimpia := strings.TrimSpace(referencia)
 
 	query := `
-		SELECT ISNULL(f_cant_existencia_1, 0)
+		SELECT ISNULL(SUM(f_cant_existencia_1), 0)
 		FROM dbo.[ADMIN-INVENTARIO_TODAS_BODEGAS]
 		WHERE LTRIM(RTRIM(f_referencia)) = @p1 AND v400_bodega = 'BODEGA PRESTAMO HERR'`
 
 	var existencia float64
 	err := r.db.QueryRowContext(ctx, query, refLimpia).Scan(&existencia)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, fmt.Errorf("referencia no encontrada en bodega de préstamo: [%s]", refLimpia)
-		}
 		return 0, fmt.Errorf("error al consultar existencia: %w", err)
 	}
 	return existencia, nil

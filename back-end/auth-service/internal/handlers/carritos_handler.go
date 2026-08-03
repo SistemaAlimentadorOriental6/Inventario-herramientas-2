@@ -5,6 +5,7 @@ import (
 	"auth-service/internal/service"
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 // ManejadorCarritos gestiona los endpoints de carritos asignados
@@ -67,8 +68,8 @@ func (h *ManejadorCarritos) AsignarCarrito(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req struct {
-		IDUsuario     int32 `json:"id_usuario"`
-		NumeroCarrito int32 `json:"numero_carrito"`
+		IDUsuario     int32  `json:"id_usuario"`
+		NumeroCarrito string `json:"numero_carrito"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -76,7 +77,8 @@ func (h *ManejadorCarritos) AsignarCarrito(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if req.IDUsuario <= 0 || req.NumeroCarrito <= 0 {
+	req.NumeroCarrito = strings.TrimSpace(req.NumeroCarrito)
+	if req.IDUsuario <= 0 || req.NumeroCarrito == "" {
 		responderError(w, http.StatusBadRequest, "se requiere id_usuario y numero_carrito válidos")
 		return
 	}
@@ -100,8 +102,8 @@ func (h *ManejadorCarritos) QuitarCarrito(w http.ResponseWriter, r *http.Request
 	}
 
 	var req struct {
-		IDUsuario     int32 `json:"id_usuario"`
-		NumeroCarrito int32 `json:"numero_carrito"`
+		IDUsuario     int32  `json:"id_usuario"`
+		NumeroCarrito string `json:"numero_carrito"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -109,7 +111,8 @@ func (h *ManejadorCarritos) QuitarCarrito(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if req.IDUsuario <= 0 || req.NumeroCarrito <= 0 {
+	req.NumeroCarrito = strings.TrimSpace(req.NumeroCarrito)
+	if req.IDUsuario <= 0 || req.NumeroCarrito == "" {
 		responderError(w, http.StatusBadRequest, "se requiere id_usuario y numero_carrito válidos")
 		return
 	}
@@ -134,7 +137,7 @@ func (h *ManejadorCarritos) DetalladoCarrito(w http.ResponseWriter, r *http.Requ
 
 	var req struct {
 		IDUsuario     int32  `json:"id_usuario"`
-		NumeroCarrito int32  `json:"numero_carrito"`
+		NumeroCarrito string `json:"numero_carrito"`
 		Cedula        string `json:"cedula"`
 	}
 
@@ -143,7 +146,8 @@ func (h *ManejadorCarritos) DetalladoCarrito(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if req.NumeroCarrito <= 0 {
+	req.NumeroCarrito = strings.TrimSpace(req.NumeroCarrito)
+	if req.NumeroCarrito == "" {
 		responderError(w, http.StatusBadRequest, "se requiere numero_carrito válido")
 		return
 	}

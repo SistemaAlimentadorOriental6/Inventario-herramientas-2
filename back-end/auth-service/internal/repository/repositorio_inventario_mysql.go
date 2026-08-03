@@ -54,7 +54,7 @@ func (r *repositorioInventarioMySQL) GuardarRegistros(ctx context.Context, regis
 
 // ObtenerReferenciasGuardadas retorna un set de referencias ya guardadas para usuario+carrito
 // Las referencias se guardan en TrimSpace para comparar correctamente con los datos de SQL Server
-func (r *repositorioInventarioMySQL) ObtenerReferenciasGuardadas(ctx context.Context, idUsuario int32, numCarrito int32) (map[string]bool, error) {
+func (r *repositorioInventarioMySQL) ObtenerReferenciasGuardadas(ctx context.Context, idUsuario int32, numCarrito string) (map[string]bool, error) {
 	query := `SELECT TRIM(referencia_producto) FROM registros_inventario WHERE id_usuario = ? AND numero_carrito = ? AND DATE(fecha_registro) = CURDATE()`
 
 	filas, err := r.db.QueryContext(ctx, query, idUsuario, numCarrito)
@@ -76,7 +76,7 @@ func (r *repositorioInventarioMySQL) ObtenerReferenciasGuardadas(ctx context.Con
 }
 
 // ContarCompletadosPorUsuario retorna mapa de numero_carrito → cantidad de registros guardados
-func (r *repositorioInventarioMySQL) ContarCompletadosPorUsuario(ctx context.Context, idUsuario int32) (map[int32]int, error) {
+func (r *repositorioInventarioMySQL) ContarCompletadosPorUsuario(ctx context.Context, idUsuario int32) (map[string]int, error) {
 	query := `
 		SELECT numero_carrito, COUNT(*) 
 		FROM registros_inventario 
@@ -89,9 +89,9 @@ func (r *repositorioInventarioMySQL) ContarCompletadosPorUsuario(ctx context.Con
 	}
 	defer filas.Close()
 
-	mapa := make(map[int32]int)
+	mapa := make(map[string]int)
 	for filas.Next() {
-		var numCarrito int32
+		var numCarrito string
 		var total int
 		if err := filas.Scan(&numCarrito, &total); err != nil {
 			return nil, err
