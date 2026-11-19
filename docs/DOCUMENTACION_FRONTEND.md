@@ -15,7 +15,6 @@ Aplicación web SPA para el **inventario de herramientas y carritos**. Permite i
 9. [Variables de entorno](#9-variables-de-entorno)
 10. [Comandos](#10-comandos)
 11. [Despliegue](#11-despliegue)
-12. [Puntos de mejora y riesgos](#12-puntos-de-mejora-y-riesgos)
 
 ## 1. Stack
 
@@ -104,9 +103,6 @@ Reglas de la guarda `beforeEach`:
 3. El componente navega a la ruta indicada por el backend.
 4. `cerrarSesion` limpia estado y almacenamiento.
 
-> [!WARNING]
-> El rol se valida en el cliente solo para navegación. La autorización real debe hacerla el backend.
-
 ## 7. Servicios HTTP
 
 Base: `VITE_API_URL`. Los errores se leen de `{ error }` y se lanzan como `Error`.
@@ -155,15 +151,3 @@ pnpm preview      # previsualizar dist/
 
 El *workflow* `.github/workflows/ci-cd.yaml` ejecuta `pnpm install` y `pnpm run build-only`, y sirve `dist/` con `serve -s` mediante PM2 como `inventario_herramientas_frontend` en el puerto **3027**.
 
-## 12. Puntos de mejora y riesgos
-
-| Prioridad | Tema | Acción sugerida |
-|---|---|---|
-| Alta | Token JWT en `localStorage` | Valorar cookie `HttpOnly` o expiración controlada en cliente |
-| Alta | Autorización solo en cliente | Reforzar roles en el backend |
-| Media | `authService`, `stockService` y las vistas de préstamo/admin repiten `fetch` | Crear cliente HTTP único con manejo de token y errores |
-| Media | `API_URL` por defecto sin `/api` | Unificar valor por defecto con `.env.example` |
-| Media | `any` en `obtenerListadoPartes` | Tipar la respuesta |
-| Media | Rol `inventario` ausente en `UsuarioAuth` | Añadirlo al tipo |
-| Baja | `stores/counter.ts` de plantilla sin uso | Eliminar |
-| Baja | Sin pruebas | Vitest para stores y servicios |
