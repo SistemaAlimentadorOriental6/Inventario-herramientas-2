@@ -14,7 +14,6 @@ API REST (`auth-service`) del sistema de **inventario de herramientas y carritos
 8. [Variables de entorno](#8-variables-de-entorno)
 9. [Comandos](#9-comandos)
 10. [Despliegue](#10-despliegue)
-11. [Puntos de mejora y riesgos](#11-puntos-de-mejora-y-riesgos)
 
 ## 1. Stack
 
@@ -122,8 +121,6 @@ Prefijo común: `/api`. Todas las rutas, salvo las públicas, exigen `Authorizat
 | GET | `/api/prestamos/operario/{cedula}` | Préstamos de un operario (filtro `estado`) |
 | POST | `/api/prestamos/{id}/devolver` | Registra devolución |
 
-> [!NOTE]
-> Los métodos HTTP se validan dentro de cada handler; un método incorrecto responde `405`.
 
 **CORS:** `Access-Control-Allow-Origin: *`, métodos `GET, POST, OPTIONS`, cabeceras `Content-Type, Authorization`.
 
@@ -178,8 +175,6 @@ Prefijo común: `/api`. Todas las rutas, salvo las públicas, exigen `Authorizat
 | `supervisor` | Definido en el modelo |
 | `visualizador` | Solo consulta (login por cédula) |
 
-> [!WARNING]
-> Solo `/api/auth/usuarios` valida el rol `admin` en el backend. Las demás rutas únicamente exigen un token válido.
 
 ## 8. Variables de entorno
 
@@ -211,17 +206,3 @@ Workflow `.github/workflows/ci-cd.yaml` (runner *self-hosted* Linux), al hacer p
 1. Compila backend (Go 1.22) y frontend (pnpm) en paralelo.
 2. Sincroniza el código con `rsync` a `/var/www/mantenimiento/inventario-herramientas`.
 3. Recompila el backend y lo levanta con PM2 como `inventario_herramientas_backend` en el puerto **3028**.
-
-## 11. Puntos de mejora y riesgos
-
-| Prioridad | Tema | Acción sugerida |
-|---|---|---|
-| Alta | `JWT_SECRETO` con valor por defecto | Fallar el arranque si no está definido |
-| Alta | Autorización por rol solo en un endpoint | Middleware `RequerirRol` para rutas administrativas y de préstamo |
-| Alta | CORS abierto (`*`) | Limitar a los orígenes del frontend |
-| Media | Sin límite de intentos de login | *Rate limiting* |
-| Media | Error en `dbUNOEE`/`dbAdmon` si `sql.Open` falla | Evitar `defer Close()` sobre valor `nil` |
-| Media | Enrutamiento de `/api/prestamos/` por `strings.Contains` | Usar patrones de Go 1.22 (`GET /api/prestamos/{id}`) |
-| Media | Rol `inventario` usado por el frontend | Incorporarlo al enum y al dominio |
-| Baja | Sin pruebas | Pruebas de servicios con repositorios simulados |
-| Baja | `tmp_schema.go` y binario `server` en el repositorio | Eliminar y añadir a `.gitignore` |
